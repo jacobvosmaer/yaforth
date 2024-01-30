@@ -93,13 +93,21 @@ void divi(void) {
   }
 }
 
+void dup(void) {
+  int x;
+  if (stackpop(&x)) {
+    stackpush(x);
+    stackpush(x);
+  }
+}
+
 void clr(void) { stackp = 0; }
 
 struct entry {
   char *word;
   void (*func)(void);
-} dict[] = {{"print", print}, {"+", add},  {"-", sub},
-            {"*", mul},       {"/", divi}, {"clr", clr}};
+} dict[] = {{"print", print}, {"+", add},   {"-", sub},  {"*", mul},
+            {"/", divi},      {"clr", clr}, {"dup", dup}};
 
 int main(void) {
   char *token;
