@@ -149,7 +149,7 @@ void startcompiling(void) {
 
 void initState(void) {
   struct entry *de, initdict[] = {
-                        {"print", print},
+                        {".", print},
                         {"+", add},
                         {"-", sub},
                         {"*", mul},
@@ -181,13 +181,12 @@ int main(void) {
   char *token;
   initState();
   while ((token = gettoken())) {
-    struct entry *de, *ne;
-    int x;
-    for (de = state.dict + state.ndict - 1; de >= state.dict; de--) {
-      int i = de - state.dict;
+    int x, i;
+    for (i = state.ndict - 1; i >= 0; i--) {
+      struct entry *de = state.dict + i;
       if (!strcmp(de->word, token)) {
         if (state.compiling && !de->immediate) {
-          ne = state.dict + state.ndict;
+          struct entry *ne = state.dict + state.ndict;
           assert(ne->def = realloc(ne->def, ++(ne->deflen) * sizeof(*ne->def)));
           ne->def[ne->deflen - 1] = i;
         } else {
@@ -196,7 +195,7 @@ int main(void) {
         break;
       }
     }
-    if (de >= state.dict)
+    if (i >= 0)
       continue;
     if (asnum(token, &x))
       stackpush(x);

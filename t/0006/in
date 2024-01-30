@@ -1,1 +1,1 @@
-: sq dup * ; 3 sq print
+: sq dup * ; 3 sq .
