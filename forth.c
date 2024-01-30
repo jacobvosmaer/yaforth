@@ -34,27 +34,29 @@ int asnum(char *token, int *out) {
   return !*end;
 }
 
-int stack[1024], stackp;
+struct {
+  int stack[1024], stackp;
+} state;
 
 void stackprint(void) {
   int i;
-  printf("<%d>", stackp);
-  for (i = 0; i < stackp; i++)
-    printf(" %d", stack[i]);
+  printf("<%d>", state.stackp);
+  for (i = 0; i < state.stackp; i++)
+    printf(" %d", state.stack[i]);
 }
 
 int stackpop(int *x) {
-  if (stackp <= 0) {
+  if (state.stackp <= 0) {
     warnx("stack empty");
     return 0;
   }
-  *x = stack[--stackp];
+  *x = state.stack[--state.stackp];
   return 1;
 }
 
 void stackpush(int x) {
-  if (stackp < nelem(stack))
-    stack[stackp++] = x;
+  if (state.stackp < nelem(state.stack))
+    state.stack[state.stackp++] = x;
   else
     warnx("stack overflow");
 }
@@ -101,7 +103,7 @@ void dup(void) {
   }
 }
 
-void clr(void) { stackp = 0; }
+void clr(void) { state.stackp = 0; }
 
 int sqdef[] = {6, 3};
 struct entry {
