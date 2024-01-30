@@ -1,0 +1,1 @@
+: sq dup * ; 3 sq print

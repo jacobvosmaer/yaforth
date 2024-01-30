@@ -39,6 +39,7 @@ struct entry {
   void (*func)(void);
   int *def;
   int deflen;
+  int immediate;
 };
 
 struct {
@@ -114,16 +115,56 @@ void dup(void) {
 
 void clr(void) { state.stackp = 0; }
 
+void printdef(struct entry *e) {
+  int i;
+  fprintf(stderr, "def=");
+  for (i = 0; i < e->deflen; i++)
+    fprintf(stderr, " %d", e->def[i]);
+  fputc('\n', stderr);
+}
+
+void endcompiling(void) {
+  if (state.compiling) {
+    state.compiling = 0;
+    state.ndict++;
+  } else
+    warnx("unexpected ;");
+}
+
+void startcompiling(void) {
+  char *token;
+  if (state.compiling) {
+    warnx("already compiling");
+    return;
+  }
+  if (state.ndict == nelem(state.dict)) {
+    warnx("no room left in dictionary");
+    return;
+  }
+
+  state.compiling = 1;
+  assert(token = gettoken());
+  assert(state.dict[state.ndict].word = strdup(token));
+}
+
 void initState(void) {
-  struct entry *de,
-      initdict[] = {{"print", print}, {"+", add},   {"-", sub},  {"*", mul},
-                    {"/", divi},      {"clr", clr}, {"dup", dup}};
+  struct entry *de, initdict[] = {
+                        {"print", print},
+                        {"+", add},
+                        {"-", sub},
+                        {"*", mul},
+                        {"/", divi},
+                        {"clr", clr},
+                        {"dup", dup},
+                        {";", endcompiling, 0, 0, 1},
+                        {":", startcompiling},
+                    };
   assert(nelem(initdict) <= nelem(state.dict));
   for (de = initdict; de < endof(initdict); de++)
     state.dict[state.ndict++] = *de;
 }
 
-void docolon(int *def, int deflen) {
+void interpret(int *def, int deflen) {
   while (deflen--) {
     struct entry *de;
     int n = *def++;
@@ -132,7 +173,7 @@ void docolon(int *def, int deflen) {
     if (de->func)
       de->func();
     else
-      docolon(de->def, de->deflen);
+      interpret(de->def, de->deflen);
   }
 }
 
@@ -140,14 +181,20 @@ int main(void) {
   char *token;
   initState();
   while ((token = gettoken())) {
-    struct entry *de;
+    struct entry *de, *ne;
     int x;
     for (de = state.dict + state.ndict - 1; de >= state.dict; de--) {
       if (!strcmp(de->word, token)) {
-        if (de->func)
-          de->func();
-        else
-          docolon(de->def, de->deflen);
+        if (state.compiling && !de->immediate) {
+          ne = state.dict + state.ndict;
+          assert(ne->def = realloc(ne->def, ++(ne->deflen) * sizeof(*ne->def)));
+          ne->def[ne->deflen - 1] = de - state.dict;
+        } else {
+          if (de->func)
+            de->func();
+          else
+            interpret(de->def, de->deflen);
+        }
         break;
       }
     }
