@@ -36,9 +36,9 @@ int space(int ch) { return ch == ' ' || ch == '\n'; }
 char *gettoken(void) {
   int ch, n = 0;
   if (state.error) {
-    printf("error: %s\n", state.error);
+    printf("  error: %s\n", state.error);
     state.error = 0;
-    while ((ch = getchar())) {
+    while ((ch = getchar())) { /* discard rest of line */
       if (ch == EOF)
         return 0;
       else if (ch == '\n')
@@ -130,14 +130,6 @@ void dup(void) {
 
 void clr(void) { state.stackp = 0; }
 
-void printdef(struct entry *e) {
-  int i;
-  fprintf(stderr, "def=");
-  for (i = 0; i < e->deflen; i++)
-    fprintf(stderr, " %d", e->def[i]);
-  fputc('\n', stderr);
-}
-
 void endcompiling(void) {
   if (state.compiling) {
     state.compiling = 0;
@@ -150,16 +142,13 @@ void startcompiling(void) {
   char *token;
   if (state.compiling) {
     state.error = "already compiling";
-    return;
-  }
-  if (state.ndict == nelem(state.dict)) {
+  } else if (state.ndict == nelem(state.dict)) {
     state.error = "no room left in dictionary";
-    return;
+  } else {
+    state.compiling = 1;
+    assert(token = gettoken());
+    assert(state.dict[state.ndict].word = strdup(token));
   }
-
-  state.compiling = 1;
-  assert(token = gettoken());
-  assert(state.dict[state.ndict].word = strdup(token));
 }
 
 void emit(void) {
@@ -188,12 +177,17 @@ void interpret(int *def, int deflen) {
   while (deflen--) {
     struct entry *de;
     int n = *def++;
-    assert(n >= 0 && n < state.ndict);
-    de = state.dict + n;
-    if (de->func)
-      de->func();
-    else
-      interpret(de->def, de->deflen);
+    if (n == -1) { /* literal number follows */
+      assert(deflen--);
+      stackpush(*def++);
+    } else { /* n is dict index */
+      assert(n >= 0 && n < state.ndict);
+      de = state.dict + n;
+      if (de->func)
+        de->func();
+      else
+        interpret(de->def, de->deflen);
+    }
   }
 }
 
@@ -217,9 +211,18 @@ int main(void) {
     }
     if (i >= 0)
       continue;
-    if (asnum(token, &x))
-      stackpush(x);
-    else
-      warnx("unknown token: %s", token);
+    if (asnum(token, &x)) {
+      if (state.compiling) {
+        struct entry *ne = state.dict + state.ndict;
+        ne->deflen += 2;
+        assert(ne->def = realloc(ne->def, ne->deflen * sizeof(*ne->def)));
+        ne->def[ne->deflen - 2] = -1;
+        ne->def[ne->deflen - 1] = x;
+      } else {
+        stackpush(x);
+      }
+    } else {
+      state.error = "unknown token";
+    }
   }
 }
