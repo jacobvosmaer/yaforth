@@ -162,18 +162,23 @@ void startcompiling(void) {
   assert(state.dict[state.ndict].word = strdup(token));
 }
 
+void emit(void) {
+  int x;
+  if (stackpop(&x))
+    putchar(x);
+}
+
 void initState(void) {
-  struct entry *de, initdict[] = {
-                        {".", print},
-                        {"+", add},
-                        {"-", sub},
-                        {"*", mul},
-                        {"/", divi},
-                        {"clr", clr},
-                        {"dup", dup},
-                        {";", endcompiling, 0, 0, 1},
-                        {":", startcompiling},
-                    };
+  struct entry *de, initdict[] = {{".", print},
+                                  {"+", add},
+                                  {"-", sub},
+                                  {"*", mul},
+                                  {"/", divi},
+                                  {"clr", clr},
+                                  {"dup", dup},
+                                  {";", endcompiling, 0, 0, 1},
+                                  {":", startcompiling},
+                                  {"emit", emit}};
   assert(nelem(initdict) <= nelem(state.dict));
   for (de = initdict; de < endof(initdict); de++)
     state.dict[state.ndict++] = *de;
