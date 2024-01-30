@@ -34,8 +34,17 @@ int asnum(char *token, int *out) {
   return !*end;
 }
 
+struct entry {
+  char *word;
+  void (*func)(void);
+  int *def;
+  int deflen;
+};
+
 struct {
-  int stack[1024], stackp, compiling;
+  int stackp, compiling, ndict;
+  int stack[1024];
+  struct entry dict[1024];
 } state;
 
 void stackprint(void) {
@@ -105,24 +114,21 @@ void dup(void) {
 
 void clr(void) { state.stackp = 0; }
 
-int sqdef[] = {6, 3};
-struct entry {
-  char *word;
-  void (*func)(void);
-  int *def;
-  int deflen;
-} dict[1024] = {{"print", print}, {"+", add},
-                {"-", sub},       {"*", mul},
-                {"/", divi},      {"clr", clr},
-                {"dup", dup},     {"sq", 0, sqdef, nelem(sqdef)}};
-int ndict;
+void initState(void) {
+  struct entry *de,
+      initdict[] = {{"print", print}, {"+", add},   {"-", sub},  {"*", mul},
+                    {"/", divi},      {"clr", clr}, {"dup", dup}};
+  assert(nelem(initdict) <= nelem(state.dict));
+  for (de = initdict; de < endof(initdict); de++)
+    state.dict[state.ndict++] = *de;
+}
 
 void docolon(int *def, int deflen) {
   while (deflen--) {
     struct entry *de;
     int n = *def++;
-    assert(n >= 0 && n < nelem(dict));
-    de = &dict[n];
+    assert(n >= 0 && n < state.ndict);
+    de = &state.dict[n];
     if (de->func)
       de->func();
     else
@@ -132,12 +138,11 @@ void docolon(int *def, int deflen) {
 
 int main(void) {
   char *token;
-  while (dict[ndict].word)
-    ndict++;
-   while ((token = gettoken())) {
+  initState();
+  while ((token = gettoken())) {
     struct entry *de;
     int x;
-    for (de = dict + ndict - 1; de >= dict; de--) {
+    for (de = state.dict + state.ndict - 1; de >= state.dict; de--) {
       if (!strcmp(de->word, token)) {
         if (de->func)
           de->func();
@@ -146,7 +151,7 @@ int main(void) {
         break;
       }
     }
-    if (de >= dict)
+    if (de >= state.dict)
       continue;
     if (asnum(token, &x))
       stackpush(x);
