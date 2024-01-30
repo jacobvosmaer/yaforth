@@ -10,18 +10,18 @@
   while (!(x))                                                                 \
   __builtin_trap()
 
-char tokbuf[1024];
-
+char tokbuf[256];
+int space(int ch) { return ch == ' ' || ch == '\n'; }
 char *gettoken(void) {
   int ch, n = 0;
   while (n < sizeof(tokbuf)) {
     ch = getchar();
     if (ch == EOF) {
       return 0;
-    } else if ((ch == ' ' || ch == '\n') && n) {
+    } else if (space(ch) && n) {
       tokbuf[n] = 0;
       return tokbuf;
-    } else if (ch != ' ') {
+    } else if (!space(ch)) {
       tokbuf[n++] = ch;
     }
   }
@@ -93,12 +93,13 @@ void divi(void) {
   }
 }
 
-void clr(void){stackp=0;}
+void clr(void) { stackp = 0; }
 
 struct entry {
   char *word;
   void (*func)(void);
-} dict[] = {{"print", print}, {"+", add}, {"-", sub}, {"*", mul}, {"/", divi},{"clr",clr}};
+} dict[] = {{"print", print}, {"+", add},  {"-", sub},
+            {"*", mul},       {"/", divi}, {"clr", clr}};
 
 int main(void) {
   char *token;
