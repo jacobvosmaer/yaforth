@@ -103,11 +103,29 @@ void dup(void) {
 
 void clr(void) { stackp = 0; }
 
+int sqdef[] = {6, 3};
 struct entry {
   char *word;
   void (*func)(void);
-} dict[] = {{"print", print}, {"+", add},   {"-", sub},  {"*", mul},
-            {"/", divi},      {"clr", clr}, {"dup", dup}};
+  int *def;
+  int deflen;
+} dict[] = {{"print", print}, {"+", add},
+            {"-", sub},       {"*", mul},
+            {"/", divi},      {"clr", clr},
+            {"dup", dup},     {"sq", 0, sqdef, nelem(sqdef)}};
+
+void docolon(int *def, int deflen) {
+  while (deflen--) {
+    struct entry *de;
+    int n = *def++;
+    assert(n >= 0 && n < nelem(dict));
+    de = &dict[n];
+    if (de->func)
+      de->func();
+    else
+      docolon(de->def, de->deflen);
+  }
+}
 
 int main(void) {
   char *token;
@@ -116,7 +134,10 @@ int main(void) {
     int x;
     for (de = endof(dict) - 1; de >= dict; de--) {
       if (!strcmp(de->word, token)) {
-        de->func();
+        if (de->func)
+          de->func();
+        else
+          docolon(de->def, de->deflen);
         break;
       }
     }
