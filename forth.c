@@ -35,7 +35,7 @@ int asnum(char *token, int *out) {
 }
 
 struct {
-  int stack[1024], stackp;
+  int stack[1024], stackp, compiling;
 } state;
 
 void stackprint(void) {
@@ -111,10 +111,11 @@ struct entry {
   void (*func)(void);
   int *def;
   int deflen;
-} dict[] = {{"print", print}, {"+", add},
-            {"-", sub},       {"*", mul},
-            {"/", divi},      {"clr", clr},
-            {"dup", dup},     {"sq", 0, sqdef, nelem(sqdef)}};
+} dict[1024] = {{"print", print}, {"+", add},
+                {"-", sub},       {"*", mul},
+                {"/", divi},      {"clr", clr},
+                {"dup", dup},     {"sq", 0, sqdef, nelem(sqdef)}};
+int ndict;
 
 void docolon(int *def, int deflen) {
   while (deflen--) {
@@ -131,10 +132,12 @@ void docolon(int *def, int deflen) {
 
 int main(void) {
   char *token;
-  while ((token = gettoken())) {
+  while (dict[ndict].word)
+    ndict++;
+   while ((token = gettoken())) {
     struct entry *de;
     int x;
-    for (de = endof(dict) - 1; de >= dict; de--) {
+    for (de = dict + ndict - 1; de >= dict; de--) {
       if (!strcmp(de->word, token)) {
         if (de->func)
           de->func();
