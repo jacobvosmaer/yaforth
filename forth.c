@@ -10,24 +10,6 @@
   while (!(x))                                                                 \
   __builtin_trap()
 
-char tokbuf[256];
-int space(int ch) { return ch == ' ' || ch == '\n'; }
-char *gettoken(void) {
-  int ch, n = 0;
-  while (n < sizeof(tokbuf)) {
-    ch = getchar();
-    if (ch == EOF) {
-      return 0;
-    } else if (space(ch) && n) {
-      tokbuf[n] = 0;
-      return tokbuf;
-    } else if (!space(ch)) {
-      tokbuf[n++] = ch;
-    }
-  }
-  assert(0);
-}
-
 int asnum(char *token, int *out) {
   char *end = 0;
   *out = strtol(token, &end, 10);
@@ -46,7 +28,38 @@ struct {
   int stackp, compiling, ndict;
   int stack[1024];
   struct entry dict[1024];
+  char *error;
 } state;
+
+char tokbuf[256];
+int space(int ch) { return ch == ' ' || ch == '\n'; }
+char *gettoken(void) {
+  int ch, n = 0;
+  if (state.error) {
+    printf("error: %s\n", state.error);
+    state.error = 0;
+    while ((ch = getchar())) {
+      if (ch == EOF)
+        return 0;
+      else if (ch == '\n')
+        break;
+    }
+  }
+  while (n < sizeof(tokbuf)) {
+    ch = getchar();
+    if (ch == EOF) {
+      return 0;
+    } else if (space(ch) && n) {
+      tokbuf[n] = 0;
+      if (ch == '\n')
+        ungetc(ch,stdin);
+      return tokbuf;
+    } else if (!space(ch)) {
+      tokbuf[n++] = ch;
+    }
+  }
+  assert(0);
+}
 
 void stackprint(void) {
   int i;
@@ -57,7 +70,7 @@ void stackprint(void) {
 
 int stackpop(int *x) {
   if (state.stackp <= 0) {
-    warnx("stack empty");
+    state.error = "stack empty";
     return 0;
   }
   *x = state.stack[--state.stackp];
@@ -68,7 +81,7 @@ void stackpush(int x) {
   if (state.stackp < nelem(state.stack))
     state.stack[state.stackp++] = x;
   else
-    warnx("stack overflow");
+    state.error = "stack overflow";
 }
 
 void print(void) {
@@ -101,7 +114,7 @@ void divi(void) {
     if (y)
       stackpush(x / y);
     else
-      warnx("division by zero");
+      state.error = "division by zero";
   }
 }
 
@@ -128,17 +141,17 @@ void endcompiling(void) {
     state.compiling = 0;
     state.ndict++;
   } else
-    warnx("unexpected ;");
+    state.error = "unexpected ;";
 }
 
 void startcompiling(void) {
   char *token;
   if (state.compiling) {
-    warnx("already compiling");
+    state.error = "already compiling";
     return;
   }
   if (state.ndict == nelem(state.dict)) {
-    warnx("no room left in dictionary");
+    state.error = "no room left in dictionary";
     return;
   }
 
