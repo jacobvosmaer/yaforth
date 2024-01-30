@@ -52,8 +52,10 @@ char *gettoken(void) {
     } else if (space(ch) && n) {
       tokbuf[n] = 0;
       if (ch == '\n')
-        ungetc(ch,stdin);
+        ungetc(ch, stdin);
       return tokbuf;
+    } else if (ch == '\n') {
+      puts("  ok");
     } else if (!space(ch)) {
       tokbuf[n++] = ch;
     }
@@ -87,7 +89,7 @@ void stackpush(int x) {
 void print(void) {
   int x;
   if (stackpop(&x))
-    printf("  %d\n", x);
+    printf(" %d", x);
 }
 
 void add(void) {
