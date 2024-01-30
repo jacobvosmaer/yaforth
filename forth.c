@@ -212,7 +212,7 @@ int main(void) {
   char *token;
   initState();
   while ((token = gettoken())) {
-    int x, i;
+    int num[2], i;
     for (i = state.ndict - 1; i >= 0; i--) {
       struct entry *de = state.dict + i;
       if (!strcmp(de->word, token)) {
@@ -228,15 +228,15 @@ int main(void) {
     }
     if (i >= 0)
       continue;
-    if (asnum(token, &x)) {
+    if (asnum(token, num + 1)) {
+      num[0] = -1;
       if (state.compiling) {
         struct entry *ne = state.dict + state.ndict;
-        ne->deflen += 2;
+        ne->deflen += nelem(num);
         assert(ne->def = realloc(ne->def, ne->deflen * sizeof(*ne->def)));
-        ne->def[ne->deflen - 2] = -1;
-        ne->def[ne->deflen - 1] = x;
+        memmove(ne->def + ne->deflen - nelem(num), num, sizeof(num));
       } else {
-        stackpush(x);
+        interpret(num, nelem(num));
       }
     } else {
       state.error = "unknown token";
