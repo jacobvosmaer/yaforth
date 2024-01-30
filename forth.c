@@ -169,7 +169,7 @@ void interpret(int *def, int deflen) {
     struct entry *de;
     int n = *def++;
     assert(n >= 0 && n < state.ndict);
-    de = &state.dict[n];
+    de = state.dict + n;
     if (de->func)
       de->func();
     else
@@ -184,16 +184,14 @@ int main(void) {
     struct entry *de, *ne;
     int x;
     for (de = state.dict + state.ndict - 1; de >= state.dict; de--) {
+      int i = de - state.dict;
       if (!strcmp(de->word, token)) {
         if (state.compiling && !de->immediate) {
           ne = state.dict + state.ndict;
           assert(ne->def = realloc(ne->def, ++(ne->deflen) * sizeof(*ne->def)));
-          ne->def[ne->deflen - 1] = de - state.dict;
+          ne->def[ne->deflen - 1] = i;
         } else {
-          if (de->func)
-            de->func();
-          else
-            interpret(de->def, de->deflen);
+          interpret(&i, 1);
         }
         break;
       }
