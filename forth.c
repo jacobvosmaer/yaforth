@@ -34,8 +34,6 @@ int asnum(char *token, int *out) {
   return !*end;
 }
 
-void complain(char *msg) { printf("ERROR: %s\n", msg); }
-
 int stack[1024], stackp;
 
 void stackprint(void) {
