@@ -132,6 +132,17 @@ void clr(void) { state.stackp = 0; }
 
 void endcompiling(void) {
   if (state.compiling) {
+    if (0) {
+      struct entry *ne = state.dict + state.ndict;
+      int i;
+      fprintf(stderr, "word=%s immediate=%d def=", ne->word, ne->immediate);
+      for (i = 0; i < ne->deflen; i++) {
+        fprintf(stderr, "%d", ne->def[i]);
+        if (i < ne->deflen - 1)
+          fputc(',', stderr);
+      }
+      fputc('\n', stderr);
+    }
     state.compiling = 0;
     state.ndict++;
   } else
@@ -157,6 +168,11 @@ void emit(void) {
     putchar(x);
 }
 
+void immediate(void) {
+  int n = state.compiling ? state.ndict : state.ndict - 1;
+  state.dict[n].immediate = 1;
+}
+
 void initState(void) {
   struct entry *de, initdict[] = {{".", print},
                                   {"+", add},
@@ -167,7 +183,8 @@ void initState(void) {
                                   {"dup", dup},
                                   {";", endcompiling, 0, 0, 1},
                                   {":", startcompiling},
-                                  {"emit", emit}};
+                                  {"emit", emit},
+                                  {"immediate", immediate, 0, 0, 1}};
   assert(nelem(initdict) <= nelem(state.dict));
   for (de = initdict; de < endof(initdict); de++)
     state.dict[state.ndict++] = *de;

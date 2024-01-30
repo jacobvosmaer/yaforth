@@ -1,0 +1,3 @@
+: x immediate 1 ;
+: y x ;
+.
