@@ -53,8 +53,10 @@ int stackpop(int *x) {
 }
 
 void stackpush(int x) {
-  assert(stackp < nelem(stack) - 1);
-  stack[stackp++] = x;
+  if (stackp < nelem(stack))
+    stack[stackp++] = x;
+  else
+    warnx("stack overflow");
 }
 
 void print(void) {
