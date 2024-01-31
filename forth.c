@@ -254,23 +254,21 @@ void initState(void) {
 }
 
 void interpret(int *def, int deflen) {
-  while (deflen-- > 0) {
-    struct entry *de;
-    int n = *def++;
-    if (n == DEFNUM) { /* literal number follows */
-      assert(deflen--);
-      stackpush(*def++);
-    } else if (n == DEFJUMPNZ) {
+  int i;
+  for (i = 0; i < deflen; i++) {
+    if (def[i] == DEFNUM) {
+      assert(++i < deflen);
+      stackpush(def[i]);
+    } else if (def[i] == DEFJUMPNZ) {
       int x;
-      assert(deflen--);
-      n = *def++;
+      assert(++i < deflen);
       if (stackpop(&x) && !x) {
-        deflen -= n;
-        def += n;
+        i += def[i];
+        assert(i >= 0 && i < deflen);
       }
-    } else { /* n is dict index */
-      assert(n >= 0 && n < state.ndict);
-      de = state.dict + n;
+    } else {
+      struct entry *de = state.dict + def[i];
+      assert(de >= state.dict && de < state.dict + state.ndict);
       if (de->func)
         de->func();
       else
