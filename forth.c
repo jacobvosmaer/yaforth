@@ -1,5 +1,3 @@
-#include <err.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -139,17 +137,6 @@ void clr(void) { state.stackp = 0; }
 
 void endcompiling(void) {
   if (state.compiling) {
-    if (0) {
-      struct entry *ne = state.dict + state.ndict;
-      int i;
-      fprintf(stderr, "word=%s immediate=%d def=", ne->word, ne->immediate);
-      for (i = 0; i < ne->deflen; i++) {
-        fprintf(stderr, "%d", ne->def[i]);
-        if (i < ne->deflen - 1)
-          fputc(',', stderr);
-      }
-      fputc('\n', stderr);
-    }
     state.compiling = 0;
     state.recursive = 0;
     state.ndict++;
