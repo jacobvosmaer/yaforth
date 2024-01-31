@@ -8,10 +8,12 @@
   while (!(x))                                                                 \
   __builtin_trap()
 
+enum { F_IMMEDIATE = 1, F_COMPILE = 2, F_NOCOMPILE = 4 };
+
 struct entry {
   char *word;
   void (*func)(void);
-  int immediate;
+  int flags;
   int *def;
   int deflen;
 };
@@ -132,18 +134,13 @@ void dup(void) {
 void clr(void) { state.stackp = 0; }
 
 void endcompiling(void) {
-  if (state.compiling) {
-    state.compiling = 0;
-    state.recursive = 0;
-    state.ndict++;
-  } else
-    state.error = "unexpected ;";
+  state.compiling = 0;
+  state.recursive = 0;
+  state.ndict++;
 }
 
 void startcompiling(void) {
-  if (state.compiling) {
-    state.error = "already compiling";
-  } else if (state.ndict == nelem(state.dict)) {
+  if (state.ndict == nelem(state.dict)) {
     state.error = "no room left in dictionary";
   } else {
     state.compiling = state.dict + state.ndict;
@@ -159,7 +156,7 @@ void emit(void) {
 }
 
 void immediate(void) {
-  state.dict[state.ndict - !state.compiling].immediate = 1;
+  state.dict[state.ndict - !state.compiling].flags |= F_IMMEDIATE;
 }
 
 enum { DEFNUM = -1, DEFJUMPNZ = -2 };
@@ -170,10 +167,6 @@ void defgrow(struct entry *ne, int n) {
 }
 
 void compileif(void) {
-  if (!state.compiling) {
-    state.error = "if is compile-only";
-    return;
-  }
   defgrow(state.compiling, 2);
   state.compiling->def[state.compiling->deflen - 2] = DEFJUMPNZ;
   stackpush(state.compiling->deflen - 1);
@@ -183,10 +176,6 @@ void compilethen(void) {
   int x;
   if (!stackpop(&x))
     return;
-  if (!state.compiling) {
-    state.error = "then is compile-only";
-    return;
-  }
   assert(x >= 0 && x < state.compiling->deflen);
   state.compiling->def[x] = state.compiling->deflen - x - 1;
 }
@@ -203,30 +192,26 @@ void greaterthan(void) {
     stackpush(x > y);
 }
 
-void recursive(void) {
-  if (state.compiling)
-    state.recursive = 1;
-  else
-    state.error = "recursive is compile-only";
-}
+void recursive(void) { state.recursive = 1; }
 
 void initState(void) {
-  struct entry *de, initdict[] = {{".", print},
-                                  {"+", add},
-                                  {"-", sub},
-                                  {"*", mul},
-                                  {"/", divi},
-                                  {"clr", clr},
-                                  {"dup", dup},
-                                  {";", endcompiling, 1},
-                                  {":", startcompiling},
-                                  {"emit", emit},
-                                  {"immediate", immediate, 1},
-                                  {"=", equal},
-                                  {"if", compileif, 1},
-                                  {"then", compilethen, 1},
-                                  {">", greaterthan},
-                                  {"recursive", recursive, 1}};
+  struct entry *de,
+      initdict[] = {{".", print},
+                    {"+", add},
+                    {"-", sub},
+                    {"*", mul},
+                    {"/", divi},
+                    {"clr", clr},
+                    {"dup", dup},
+                    {";", endcompiling, F_IMMEDIATE | F_COMPILE},
+                    {":", startcompiling, F_NOCOMPILE},
+                    {"emit", emit},
+                    {"immediate", immediate, F_IMMEDIATE},
+                    {"=", equal},
+                    {"if", compileif, F_IMMEDIATE | F_COMPILE},
+                    {"then", compilethen, F_IMMEDIATE | F_COMPILE},
+                    {">", greaterthan},
+                    {"recursive", recursive, F_IMMEDIATE | F_COMPILE}};
   assert(nelem(initdict) <= nelem(state.dict));
   for (de = initdict; de < endof(initdict); de++)
     state.dict[state.ndict++] = *de;
@@ -269,7 +254,11 @@ int main(void) {
     for (i = state.ndict - 1 + state.recursive; i >= 0; i--) {
       struct entry *de = state.dict + i;
       if (!strcmp(de->word, state.token)) {
-        if (state.compiling && !de->immediate) {
+        if (state.compiling && de->flags & F_NOCOMPILE) {
+          state.error = "word cannot be used while compiling";
+        } else if (!state.compiling && de->flags & F_COMPILE) {
+          state.error = "word can only be used while compiling";
+        } else if (state.compiling && !(de->flags & F_IMMEDIATE)) {
           defgrow(state.compiling, 1);
           state.compiling->def[state.compiling->deflen - 1] = i;
         } else {
@@ -290,7 +279,7 @@ int main(void) {
         interpret(num, nelem(num));
       }
     } else {
-      state.error = "unknown token";
+      state.error = "unknown word";
     }
   }
 }
