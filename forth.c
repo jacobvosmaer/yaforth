@@ -8,12 +8,6 @@
   while (!(x))                                                                 \
   __builtin_trap()
 
-int asnum(char *token, int *out) {
-  char *end = 0;
-  *out = strtol(token, &end, 10);
-  return !*end;
-}
-
 struct entry {
   char *word;
   void (*func)(void);
@@ -260,6 +254,12 @@ void interpret(int *def, int deflen) {
         interpret(de->def, de->deflen);
     }
   }
+}
+
+int asnum(char *token, int *out) {
+  char *end = 0;
+  *out = strtol(token, &end, 10);
+  return !*end;
 }
 
 int main(void) {
