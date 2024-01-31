@@ -25,7 +25,7 @@ struct entry {
 };
 
 struct {
-  int stackp, compiling, ndict;
+  int stackp, compiling, ndict, recursive;
   int stack[1024];
   struct entry dict[1024];
   char *error;
@@ -61,6 +61,13 @@ char *gettoken(void) {
     }
   }
   assert(0);
+}
+
+void defprint(int *def, int deflen) {
+  fprintf(stderr, "def:");
+  while (deflen-- > 0)
+    fprintf(stderr, " %d", *def++);
+  fputc('\n', stderr);
 }
 
 void stackprint(void) {
@@ -144,6 +151,7 @@ void endcompiling(void) {
       fputc('\n', stderr);
     }
     state.compiling = 0;
+    state.recursive = 0;
     state.ndict++;
   } else
     state.error = "unexpected ;";
@@ -173,6 +181,56 @@ void immediate(void) {
   state.dict[n].immediate = 1;
 }
 
+enum { DEFNUM = -1, DEFJUMPNZ = -2 };
+
+void defgrow(struct entry *ne, int n) {
+  ne->deflen += n;
+  assert(ne->def = realloc(ne->def, ne->deflen * sizeof(*ne->def)));
+}
+
+void compileif(void) {
+  struct entry *ne = state.dict + state.ndict;
+  if (!state.compiling) {
+    state.error = "if is compile-only";
+    return;
+  }
+  defgrow(ne, 2);
+  ne->def[ne->deflen - 2] = DEFJUMPNZ;
+  stackpush(ne->deflen - 1);
+}
+
+void compilethen(void) {
+  struct entry *ne = state.dict + state.ndict;
+  int x;
+  if (!stackpop(&x))
+    return;
+  if (!state.compiling) {
+    state.error = "then is compile-only";
+    return;
+  }
+  assert(x < ne->deflen);
+  ne->def[x] = ne->deflen - x - 1;
+}
+
+void equal(void) {
+  int x, y;
+  if (stackpop(&y) && stackpop(&x))
+    stackpush(x == y);
+}
+
+void greaterthan(void) {
+  int x, y;
+  if (stackpop(&y) && stackpop(&x))
+    stackpush(x > y);
+}
+
+void recursive(void) {
+  if (state.compiling)
+    state.recursive = 1;
+  else
+    state.error = "recursive is compile-only";
+}
+
 void initState(void) {
   struct entry *de, initdict[] = {{".", print},
                                   {"+", add},
@@ -184,19 +242,32 @@ void initState(void) {
                                   {";", endcompiling, 0, 0, 1},
                                   {":", startcompiling},
                                   {"emit", emit},
-                                  {"immediate", immediate, 0, 0, 1}};
+                                  {"immediate", immediate, 0, 0, 1},
+                                  {"=", equal},
+                                  {"if", compileif, 0, 0, 1},
+                                  {"then", compilethen, 0, 0, 1},
+                                  {">", greaterthan},
+                                  {"recursive", recursive, 0, 0, 1}};
   assert(nelem(initdict) <= nelem(state.dict));
   for (de = initdict; de < endof(initdict); de++)
     state.dict[state.ndict++] = *de;
 }
 
 void interpret(int *def, int deflen) {
-  while (deflen--) {
+  while (deflen-- > 0) {
     struct entry *de;
     int n = *def++;
-    if (n == -1) { /* literal number follows */
+    if (n == DEFNUM) { /* literal number follows */
       assert(deflen--);
       stackpush(*def++);
+    } else if (n == DEFJUMPNZ) {
+      int x;
+      assert(deflen--);
+      n = *def++;
+      if (stackpop(&x) && !x) {
+        deflen -= n;
+        def += n;
+      }
     } else { /* n is dict index */
       assert(n >= 0 && n < state.ndict);
       de = state.dict + n;
@@ -213,12 +284,12 @@ int main(void) {
   initState();
   while ((token = gettoken())) {
     int num[2], i;
-    for (i = state.ndict - 1; i >= 0; i--) {
+    for (i = state.ndict - 1 + state.recursive; i >= 0; i--) {
       struct entry *de = state.dict + i;
       if (!strcmp(de->word, token)) {
         if (state.compiling && !de->immediate) {
           struct entry *ne = state.dict + state.ndict;
-          assert(ne->def = realloc(ne->def, ++(ne->deflen) * sizeof(*ne->def)));
+          defgrow(ne, 1);
           ne->def[ne->deflen - 1] = i;
         } else {
           interpret(&i, 1);
@@ -229,11 +300,10 @@ int main(void) {
     if (i >= 0)
       continue;
     if (asnum(token, num + 1)) {
-      num[0] = -1;
+      num[0] = DEFNUM;
       if (state.compiling) {
         struct entry *ne = state.dict + state.ndict;
-        ne->deflen += nelem(num);
-        assert(ne->def = realloc(ne->def, ne->deflen * sizeof(*ne->def)));
+        defgrow(ne, nelem(num));
         memmove(ne->def + ne->deflen - nelem(num), num, sizeof(num));
       } else {
         interpret(num, nelem(num));
