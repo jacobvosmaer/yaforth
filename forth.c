@@ -26,7 +26,7 @@ struct {
   int stackp, ndict, recursive;
   int stack[1024];
   struct entry *compiling, dict[1024];
-  char *error;
+  char *error, *token;
 } state;
 
 char tokbuf[256];
@@ -35,6 +35,8 @@ char *gettoken(void) {
   int ch, n = 0;
   if (state.error) {
     printf("  error: %s\n", state.error);
+    if (state.token)
+      printf("  token: %s\n", state.token);
     state.error = 0;
     while ((ch = getchar())) { /* discard rest of line */
       if (ch == EOF)
@@ -145,15 +147,14 @@ void endcompiling(void) {
 }
 
 void startcompiling(void) {
-  char *token;
   if (state.compiling) {
     state.error = "already compiling";
   } else if (state.ndict == nelem(state.dict)) {
     state.error = "no room left in dictionary";
   } else {
     state.compiling = state.dict + state.ndict;
-    assert(token = gettoken());
-    assert(state.dict[state.ndict].word = strdup(token));
+    assert(state.token = gettoken());
+    assert(state.dict[state.ndict].word = strdup(state.token));
   }
 }
 
@@ -262,13 +263,12 @@ void interpret(int *def, int deflen) {
 }
 
 int main(void) {
-  char *token;
   initState();
-  while ((token = gettoken())) {
+  while ((state.token = gettoken())) {
     int num[2], i;
     for (i = state.ndict - 1 + state.recursive; i >= 0; i--) {
       struct entry *de = state.dict + i;
-      if (!strcmp(de->word, token)) {
+      if (!strcmp(de->word, state.token)) {
         if (state.compiling && !de->immediate) {
           defgrow(state.compiling, 1);
           state.compiling->def[state.compiling->deflen - 1] = i;
@@ -280,7 +280,7 @@ int main(void) {
     }
     if (i >= 0)
       continue;
-    if (asnum(token, &num[1])) {
+    if (asnum(state.token, &num[1])) {
       num[0] = DEFNUM;
       if (state.compiling) {
         defgrow(state.compiling, nelem(num));
