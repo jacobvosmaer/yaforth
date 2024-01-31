@@ -195,26 +195,26 @@ void greaterthan(void) {
 void recursive(void) { state.recursive = 1; }
 
 void initState(void) {
-  struct entry *de,
-      initdict[] = {{".", print},
-                    {"+", add},
-                    {"-", sub},
-                    {"*", mul},
-                    {"/", divi},
-                    {"clr", clr},
-                    {"dup", dup},
-                    {";", endcompiling, F_IMMEDIATE | F_COMPILE},
-                    {":", startcompiling, F_NOCOMPILE},
-                    {"emit", emit},
-                    {"immediate", immediate, F_IMMEDIATE},
-                    {"=", equal},
-                    {"if", compileif, F_IMMEDIATE | F_COMPILE},
-                    {"then", compilethen, F_IMMEDIATE | F_COMPILE},
-                    {">", greaterthan},
-                    {"recursive", recursive, F_IMMEDIATE | F_COMPILE}};
-  assert(nelem(initdict) <= nelem(state.dict));
-  for (de = initdict; de < endof(initdict); de++)
-    state.dict[state.ndict++] = *de;
+  struct entry initdict[] = {{".", print},
+                             {"+", add},
+                             {"-", sub},
+                             {"*", mul},
+                             {"/", divi},
+                             {"clr", clr},
+                             {"dup", dup},
+                             {";", endcompiling, F_IMMEDIATE | F_COMPILE},
+                             {":", startcompiling, F_NOCOMPILE},
+                             {"emit", emit},
+                             {"immediate", immediate, F_IMMEDIATE},
+                             {"=", equal},
+                             {"if", compileif, F_IMMEDIATE | F_COMPILE},
+                             {"then", compilethen, F_IMMEDIATE | F_COMPILE},
+                             {">", greaterthan},
+                             {"recursive", recursive, F_IMMEDIATE | F_COMPILE}};
+  memset(&state, 0, sizeof(state));
+  assert(sizeof(initdict) <= sizeof(state.dict));
+  memmove(state.dict, initdict, sizeof(initdict));
+  state.ndict = nelem(initdict);
 }
 
 void interpret(int *def, int deflen) {
