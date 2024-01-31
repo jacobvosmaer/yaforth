@@ -23,9 +23,9 @@ struct entry {
 };
 
 struct {
-  int stackp, compiling, ndict, recursive;
+  int stackp, ndict, recursive;
   int stack[1024];
-  struct entry dict[1024];
+  struct entry *compiling, dict[1024];
   char *error;
 } state;
 
@@ -151,7 +151,7 @@ void startcompiling(void) {
   } else if (state.ndict == nelem(state.dict)) {
     state.error = "no room left in dictionary";
   } else {
-    state.compiling = 1;
+    state.compiling = state.dict + state.ndict;
     assert(token = gettoken());
     assert(state.dict[state.ndict].word = strdup(token));
   }
@@ -175,18 +175,16 @@ void defgrow(struct entry *ne, int n) {
 }
 
 void compileif(void) {
-  struct entry *ne = state.dict + state.ndict;
   if (!state.compiling) {
     state.error = "if is compile-only";
     return;
   }
-  defgrow(ne, 2);
-  ne->def[ne->deflen - 2] = DEFJUMPNZ;
-  stackpush(ne->deflen - 1);
+  defgrow(state.compiling, 2);
+  state.compiling->def[state.compiling->deflen - 2] = DEFJUMPNZ;
+  stackpush(state.compiling->deflen - 1);
 }
 
 void compilethen(void) {
-  struct entry *ne = state.dict + state.ndict;
   int x;
   if (!stackpop(&x))
     return;
@@ -194,8 +192,8 @@ void compilethen(void) {
     state.error = "then is compile-only";
     return;
   }
-  assert(x < ne->deflen);
-  ne->def[x] = ne->deflen - x - 1;
+  assert(x < state.compiling->deflen);
+  state.compiling->def[x] = state.compiling->deflen - x - 1;
 }
 
 void equal(void) {
@@ -272,9 +270,8 @@ int main(void) {
       struct entry *de = state.dict + i;
       if (!strcmp(de->word, token)) {
         if (state.compiling && !de->immediate) {
-          struct entry *ne = state.dict + state.ndict;
-          defgrow(ne, 1);
-          ne->def[ne->deflen - 1] = i;
+          defgrow(state.compiling, 1);
+          state.compiling->def[state.compiling->deflen - 1] = i;
         } else {
           interpret(&i, 1);
         }
@@ -283,12 +280,12 @@ int main(void) {
     }
     if (i >= 0)
       continue;
-    if (asnum(token, num + 1)) {
+    if (asnum(token, &num[1])) {
       num[0] = DEFNUM;
       if (state.compiling) {
-        struct entry *ne = state.dict + state.ndict;
-        defgrow(ne, nelem(num));
-        memmove(ne->def + ne->deflen - nelem(num), num, sizeof(num));
+        defgrow(state.compiling, nelem(num));
+        memmove(state.compiling->def + state.compiling->deflen - nelem(num),
+                num, sizeof(num));
       } else {
         interpret(num, nelem(num));
       }
