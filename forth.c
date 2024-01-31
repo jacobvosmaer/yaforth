@@ -177,8 +177,7 @@ void emit(void) {
 }
 
 void immediate(void) {
-  int n = state.compiling ? state.ndict : state.ndict - 1;
-  state.dict[n].immediate = 1;
+  state.dict[state.ndict - !state.compiling].immediate = 1;
 }
 
 enum { DEFNUM = -1, DEFJUMPNZ = -2 };
