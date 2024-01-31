@@ -17,9 +17,9 @@ int asnum(char *token, int *out) {
 struct entry {
   char *word;
   void (*func)(void);
+  int immediate;
   int *def;
   int deflen;
-  int immediate;
 };
 
 struct {
@@ -192,7 +192,7 @@ void compilethen(void) {
     state.error = "then is compile-only";
     return;
   }
-  assert(x < state.compiling->deflen);
+  assert(x >= 0 && x < state.compiling->deflen);
   state.compiling->def[x] = state.compiling->deflen - x - 1;
 }
 
@@ -223,15 +223,15 @@ void initState(void) {
                                   {"/", divi},
                                   {"clr", clr},
                                   {"dup", dup},
-                                  {";", endcompiling, 0, 0, 1},
+                                  {";", endcompiling, 1},
                                   {":", startcompiling},
                                   {"emit", emit},
-                                  {"immediate", immediate, 0, 0, 1},
+                                  {"immediate", immediate, 1},
                                   {"=", equal},
-                                  {"if", compileif, 0, 0, 1},
-                                  {"then", compilethen, 0, 0, 1},
+                                  {"if", compileif, 1},
+                                  {"then", compilethen, 1},
                                   {">", greaterthan},
-                                  {"recursive", recursive, 0, 0, 1}};
+                                  {"recursive", recursive, 1}};
   assert(nelem(initdict) <= nelem(state.dict));
   for (de = initdict; de < endof(initdict); de++)
     state.dict[state.ndict++] = *de;
