@@ -284,4 +284,5 @@ int main(void) {
       state.error = "unknown word";
     }
   }
+  return 0;
 }
