@@ -8,7 +8,7 @@
   while (!(x))                                                                 \
   __builtin_trap()
 
-enum { F_IMMEDIATE = 1, F_COMPILE = 2, F_NOCOMPILE = 4 };
+enum { F_IMMEDIATE = 1 << 0, F_COMPILE = 1 << 1, F_NOCOMPILE = 1 << 2 };
 
 struct entry {
   char *word;
@@ -34,6 +34,8 @@ char *gettoken(void) {
     if (state.token)
       printf("  token: %s\n", state.token);
     state.error = 0;
+    state.compiling = 0;
+    state.recursive = 0;
     while ((ch = getchar())) { /* discard rest of line */
       if (ch == EOF)
         return 0;
@@ -47,7 +49,7 @@ char *gettoken(void) {
       return 0;
     } else if (space(ch) && n) {
       tokbuf[n] = 0;
-      if (ch == '\n')
+      if (ch == '\n') /* trigger printing of state.error */
         ungetc(ch, stdin);
       return tokbuf;
     } else if (ch == '\n') {
