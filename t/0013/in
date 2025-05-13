@@ -1,0 +1,3 @@
+: fac dup 1 > if dup 1 - fac * then ;
+: fac recursive dup 1 > if dup 1 - fac * then ;
+3 fac .

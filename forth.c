@@ -25,6 +25,18 @@ struct {
   char *error, *token;
 } state;
 
+void defgrow(struct entry *ne, int n) {
+  ne->deflen += n;
+  assert(ne->def = realloc(ne->def, ne->deflen * sizeof(*ne->def)));
+}
+
+void entryreset(struct entry *e) {
+  struct entry empty = {0};
+  free(e->word);
+  free(e->def);
+  *e = empty;
+}
+
 char tokbuf[256];
 int space(int ch) { return ch == ' ' || ch == '\n'; }
 char *gettoken(void) {
@@ -34,7 +46,10 @@ char *gettoken(void) {
     if (state.token)
       printf("  token: %s\n", state.token);
     state.error = 0;
-    state.compiling = 0;
+    if (state.compiling) {
+      entryreset(state.compiling);
+      state.compiling = 0;
+    }
     state.recursive = 0;
     while ((ch = getchar())) { /* discard rest of line */
       if (ch == EOF)
@@ -162,11 +177,6 @@ void immediate(void) {
 }
 
 enum { DEFNUM = -1, DEFJUMPNZ = -2 };
-
-void defgrow(struct entry *ne, int n) {
-  ne->deflen += n;
-  assert(ne->def = realloc(ne->def, ne->deflen * sizeof(*ne->def)));
-}
 
 void compileif(void) {
   defgrow(state.compiling, 2);
