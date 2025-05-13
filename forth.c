@@ -176,19 +176,23 @@ void immediate(void) {
   state.dict[state.ndict - !state.compiling].flags |= F_IMMEDIATE;
 }
 
-enum { DEFNUM = -1, DEFJUMPNZ = -2 };
+enum { DEFNUM = -1, DEFJUMPZ = -2 };
 
 void compileif(void) {
   defgrow(state.compiling, 2);
-  state.compiling->def[state.compiling->deflen - 2] = DEFJUMPNZ;
+  /* conditional jump if top of stack is zero */
+  state.compiling->def[state.compiling->deflen - 2] = DEFJUMPZ;
+  /* while compiling, remember where the if body starts */
   stackpush(state.compiling->deflen - 1);
 }
 
 void compilethen(void) {
   int x;
+  /* retrieve start of if body */
   if (!stackpop(&x))
     return;
   assert(x >= 0 && x < state.compiling->deflen);
+  /* compute and store relative jump offset */
   state.compiling->def[x] = state.compiling->deflen - x - 1;
 }
 
@@ -235,7 +239,7 @@ void interpret(int *def, int deflen) {
     if (def[i] == DEFNUM) {
       assert(++i < deflen);
       stackpush(def[i]);
-    } else if (def[i] == DEFJUMPNZ) {
+    } else if (def[i] == DEFJUMPZ) {
       int x;
       assert(++i < deflen);
       if (stackpop(&x) && !x) {
