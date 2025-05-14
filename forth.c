@@ -267,25 +267,22 @@ int main(void) {
   initState();
   while ((state.token = gettoken())) {
     int num[2], i;
-    for (i = state.ndict - 1 + state.recursive; i >= 0; i--) {
-      struct entry *de = state.dict + i;
-      if (!strcmp(de->word, state.token)) {
-        if (state.compiling && de->flags & F_NOCOMPILE) {
-          state.error = "word cannot be used while compiling";
-        } else if (!state.compiling && de->flags & F_COMPILE) {
-          state.error = "word can only be used while compiling";
-        } else if (state.compiling && !(de->flags & F_IMMEDIATE)) {
-          defgrow(state.compiling, 1);
-          state.compiling->def[state.compiling->deflen - 1] = i;
-        } else {
-          interpret(&i, 1);
-        }
+    for (i = state.ndict - 1 + state.recursive; i >= 0; i--)
+      if (!strcmp(state.dict[i].word, state.token))
         break;
+    if (i >= 0) { /* token found in dict */
+      struct entry *de = state.dict + i;
+      if (state.compiling && de->flags & F_NOCOMPILE) {
+        state.error = "word cannot be used while compiling";
+      } else if (!state.compiling && de->flags & F_COMPILE) {
+        state.error = "word can only be used while compiling";
+      } else if (state.compiling && !(de->flags & F_IMMEDIATE)) {
+        defgrow(state.compiling, 1);
+        state.compiling->def[state.compiling->deflen - 1] = i;
+      } else {
+        interpret(&i, 1);
       }
-    }
-    if (i >= 0)
-      continue;
-    if (asnum(state.token, &num[1])) {
+    } else if (asnum(state.token, &num[1])) {
       num[0] = DEFNUM;
       if (state.compiling) {
         defgrow(state.compiling, nelem(num));
