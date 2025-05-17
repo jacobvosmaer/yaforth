@@ -218,6 +218,11 @@ void swap(void) {
   }
 }
 
+void drop(void) {
+  int x;
+  stackpop(&x);
+}
+
 void initState(void) {
   struct entry initdict[] = {{".", print},
                              {"+", add},
@@ -235,7 +240,8 @@ void initState(void) {
                              {"then", compilethen, F_IMMEDIATE | F_COMPILE},
                              {">", greaterthan},
                              {"recursive", recursive, F_IMMEDIATE | F_COMPILE},
-                             {"swap", swap}};
+                             {"swap", swap},
+                             {"drop", drop}};
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
