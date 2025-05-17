@@ -223,6 +223,15 @@ void drop(void) {
   stackpop(&x);
 }
 
+void over(void) {
+  int x, y;
+  if (stackpop(&y) && stackpop(&x)) {
+    stackpush(x);
+    stackpush(y);
+    stackpush(x);
+  }
+}
+
 void initState(void) {
   struct entry initdict[] = {{".", print},
                              {"+", add},
@@ -241,7 +250,8 @@ void initState(void) {
                              {">", greaterthan},
                              {"recursive", recursive, F_IMMEDIATE | F_COMPILE},
                              {"swap", swap},
-                             {"drop", drop}};
+                             {"drop", drop},
+                             {"over", over}};
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
