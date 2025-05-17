@@ -210,6 +210,14 @@ void greaterthan(void) {
 
 void recursive(void) { state.recursive = 1; }
 
+void swap(void) {
+  int x, y;
+  if (stackpop(&y) && stackpop(&x)) {
+    stackpush(y);
+    stackpush(x);
+  }
+}
+
 void initState(void) {
   struct entry initdict[] = {{".", print},
                              {"+", add},
@@ -226,7 +234,8 @@ void initState(void) {
                              {"if", compileif, F_IMMEDIATE | F_COMPILE},
                              {"then", compilethen, F_IMMEDIATE | F_COMPILE},
                              {">", greaterthan},
-                             {"recursive", recursive, F_IMMEDIATE | F_COMPILE}};
+                             {"recursive", recursive, F_IMMEDIATE | F_COMPILE},
+                             {"swap", swap}};
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
