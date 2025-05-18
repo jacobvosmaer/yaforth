@@ -251,7 +251,8 @@ void initState(void) {
                              {"recursive", recursive, F_IMMEDIATE | F_COMPILE},
                              {"swap", swap},
                              {"drop", drop},
-                             {"over", over}};
+                             {"over", over},
+                             {".s", stackprint}};
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
