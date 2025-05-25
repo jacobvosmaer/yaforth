@@ -15,7 +15,6 @@ struct entry {
   void (*func)(void);
   int flags;
   int *def;
-  int deflen;
 };
 
 struct {
@@ -26,13 +25,6 @@ struct {
 } state;
 
 int mem[8192], nmem;
-
-void defgrow(struct entry *ne, int n) {
-  ne->deflen += n;
-  if (!ne->def)
-    ne->def = mem + nmem;
-  nmem += n;
-}
 
 void entryreset(struct entry *e) {
   struct entry empty = {0};
@@ -152,7 +144,10 @@ void dup(void) {
 
 void clr(void) { state.stackp = 0; }
 
+enum { DEFNUM = -1, DEFJUMPZ = -2, DEFEND = -3 };
+
 void endcompiling(void) {
+  mem[nmem++] = DEFEND;
   state.compiling = 0;
   state.recursive = 0;
   state.ndict++;
@@ -177,6 +172,7 @@ void startcompiling(void) {
     state.compiling = state.dict + state.ndict;
     assert(state.token = gettoken());
     assert(state.dict[state.ndict].word = Strdup(state.token));
+    state.compiling->def = mem + nmem;
   }
 }
 
@@ -190,14 +186,9 @@ void immediate(void) {
   state.dict[state.ndict - !state.compiling].flags |= F_IMMEDIATE;
 }
 
-enum { DEFNUM = -1, DEFJUMPZ = -2 };
-
 void compileif(void) {
-  defgrow(state.compiling, 2);
-  /* conditional jump if top of stack is zero */
-  state.compiling->def[state.compiling->deflen - 2] = DEFJUMPZ;
-  /* while compiling, remember where the if body starts */
-  stackpush(state.compiling->deflen - 1);
+  mem[nmem++] = DEFJUMPZ;
+  stackpush(nmem++);
 }
 
 void compilethen(void) {
@@ -205,9 +196,9 @@ void compilethen(void) {
   /* retrieve start of if body */
   if (!stackpop(&x))
     return;
-  assert(x >= 0 && x < state.compiling->deflen);
+  assert(x >= 0 && x < nmem);
   /* compute and store relative jump offset */
-  state.compiling->def[x] = state.compiling->deflen - x - 1;
+  mem[x] = nmem - x - 1;
 }
 
 void equal(void) {
@@ -273,26 +264,23 @@ void initState(void) {
   state.ndict = nelem(initdict);
 }
 
-void docol(int *def, int deflen) {
-  int i;
-  for (i = 0; i < deflen; i++) {
-    if (def[i] == DEFNUM) {
-      assert(++i < deflen);
-      stackpush(def[i]);
-    } else if (def[i] == DEFJUMPZ) {
+void docol(int *def) {
+  for (; *def > DEFEND; def++) {
+    if (*def == DEFNUM) {
+      stackpush(*++def);
+    } else if (*def == DEFJUMPZ) {
       int x;
-      assert(++i < deflen);
+      def++;
       if (stackpop(&x) && !x) {
-        i += def[i];
-        assert(i >= 0 && i < deflen);
+        def += *def;
       }
     } else {
-      struct entry *de = state.dict + def[i];
+      struct entry *de = state.dict + *def;
       assert(de >= state.dict && de < state.dict + state.ndict);
       if (de->func)
         de->func();
       else
-        docol(de->def, de->deflen);
+        docol(de->def);
     }
   }
 }
@@ -306,7 +294,7 @@ int asnum(char *token, int *out) {
 int main(void) {
   initState();
   while ((state.token = gettoken())) {
-    int num[2], i;
+    int x, i;
     for (i = state.ndict - 1 + state.recursive; i >= 0; i--)
       if (!strcmp(state.dict[i].word, state.token))
         break;
@@ -317,19 +305,19 @@ int main(void) {
       } else if (!state.compiling && de->flags & F_COMPILE) {
         state.error = "word can only be used while compiling";
       } else if (state.compiling && !(de->flags & F_IMMEDIATE)) {
-        defgrow(state.compiling, 1);
-        state.compiling->def[state.compiling->deflen - 1] = i;
+        mem[nmem++] = i;
       } else {
-        docol(&i, 1);
+        int def[2];
+        def[0] = i;
+        def[1] = DEFEND;
+        docol(def);
       }
-    } else if (asnum(state.token, &num[1])) {
-      num[0] = DEFNUM;
+    } else if (asnum(state.token, &x)) {
       if (state.compiling) {
-        defgrow(state.compiling, nelem(num));
-        memmove(state.compiling->def + state.compiling->deflen - nelem(num),
-                num, sizeof(num));
+        mem[nmem++] = DEFNUM;
+        mem[nmem++] = x;
       } else {
-        stackpush(num[1]);
+        stackpush(x);
       }
     } else {
       state.error = "unknown word";
