@@ -25,15 +25,17 @@ struct {
   char *error, *token;
 } state;
 
+int mem[8192], nmem;
+
 void defgrow(struct entry *ne, int n) {
   ne->deflen += n;
-  assert(ne->def = realloc(ne->def, ne->deflen * sizeof(*ne->def)));
+  if (!ne->def)
+    ne->def = mem + nmem;
+  nmem += n;
 }
 
 void entryreset(struct entry *e) {
   struct entry empty = {0};
-  free(e->word);
-  free(e->def);
   *e = empty;
 }
 
@@ -156,13 +158,25 @@ void endcompiling(void) {
   state.ndict++;
 }
 
+char *Strdup(char *s) {
+  char *p = (char *)(mem + nmem);
+  int len = strlen(s), mask = sizeof(*mem) - 1,
+      nints = ((len + 1 + mask) & ~mask) / sizeof(*mem);
+  if ((nelem(mem) - nmem) < nints)
+    return 0;
+  memmove(p, s, len);
+  p[len] = 0;
+  nmem += nints;
+  return p;
+}
+
 void startcompiling(void) {
   if (state.ndict == nelem(state.dict)) {
     state.error = "no room left in dictionary";
   } else {
     state.compiling = state.dict + state.ndict;
     assert(state.token = gettoken());
-    assert(state.dict[state.ndict].word = strdup(state.token));
+    assert(state.dict[state.ndict].word = Strdup(state.token));
   }
 }
 
