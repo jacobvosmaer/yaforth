@@ -8,7 +8,12 @@
   while (!(x))                                                                 \
   __builtin_trap()
 
-enum { F_IMMEDIATE = 1 << 0, F_COMPILE = 1 << 1, F_NOCOMPILE = 1 << 2 };
+enum {
+  F_IMMEDIATE = 1 << 0,
+  F_COMPILE = 1 << 1,
+  F_NOCOMPILE = 1 << 2,
+  F_HIDDEN = 1 << 3
+};
 
 struct entry {
   char *word;
@@ -18,7 +23,7 @@ struct entry {
 };
 
 struct {
-  int stackp, ndict, recursive;
+  int stackp, ndict;
   int stack[1024];
   struct entry *compiling, dict[1024];
   char *error, *token;
@@ -43,8 +48,8 @@ char *gettoken(void) {
     if (state.compiling) {
       entryreset(state.compiling);
       state.compiling = 0;
+      state.ndict--;
     }
-    state.recursive = 0;
     while ((ch = getchar())) { /* discard rest of line */
       if (ch == EOF)
         return 0;
@@ -148,9 +153,8 @@ enum { DEFNUM = -1, DEFJUMPZ = -2, DEFEND = -3 };
 
 void endcompiling(void) {
   mem[nmem++] = DEFEND;
+  state.compiling->flags &= ~F_HIDDEN;
   state.compiling = 0;
-  state.recursive = 0;
-  state.ndict++;
 }
 
 char *Strdup(char *s) {
@@ -170,9 +174,11 @@ void startcompiling(void) {
     state.error = "no room left in dictionary";
   } else {
     state.compiling = state.dict + state.ndict;
+    state.compiling->flags = F_HIDDEN;
     assert(state.token = gettoken());
     assert(state.dict[state.ndict].word = Strdup(state.token));
     state.compiling->def = mem + nmem;
+    state.ndict++;
   }
 }
 
@@ -182,9 +188,7 @@ void emit(void) {
     putchar(x);
 }
 
-void immediate(void) {
-  state.dict[state.ndict - !state.compiling].flags |= F_IMMEDIATE;
-}
+void immediate(void) { state.dict[state.ndict - 1].flags |= F_IMMEDIATE; }
 
 void compileif(void) {
   mem[nmem++] = DEFJUMPZ;
@@ -213,7 +217,7 @@ void greaterthan(void) {
     stackpush(x > y);
 }
 
-void recursive(void) { state.recursive = 1; }
+void recursive(void) { state.compiling->flags &= ~F_HIDDEN; }
 
 void swap(void) {
   int x, y;
@@ -295,8 +299,9 @@ int main(void) {
   initState();
   while ((state.token = gettoken())) {
     int x, i;
-    for (i = state.ndict - 1 + state.recursive; i >= 0; i--)
-      if (!strcmp(state.dict[i].word, state.token))
+    for (i = state.ndict - 1; i >= 0; i--)
+      if (!(state.dict[i].flags & F_HIDDEN) &&
+          !strcmp(state.dict[i].word, state.token))
         break;
     if (i >= 0) { /* token found in dict */
       struct entry *de = state.dict + i;
