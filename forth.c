@@ -160,7 +160,7 @@ char *Strdup(char *s) {
   if ((nelem(mem) - nmem) < nints)
     return 0;
   memmove(p, s, len);
-  p[len] = 0;
+  memset(p + len, 0, nints * sizeof(int) - len);
   nmem += nints;
   return p;
 }
