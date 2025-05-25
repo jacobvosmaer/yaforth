@@ -273,7 +273,7 @@ void initState(void) {
   state.ndict = nelem(initdict);
 }
 
-void interpret(int *def, int deflen) {
+void docol(int *def, int deflen) {
   int i;
   for (i = 0; i < deflen; i++) {
     if (def[i] == DEFNUM) {
@@ -292,7 +292,7 @@ void interpret(int *def, int deflen) {
       if (de->func)
         de->func();
       else
-        interpret(de->def, de->deflen);
+        docol(de->def, de->deflen);
     }
   }
 }
@@ -320,7 +320,7 @@ int main(void) {
         defgrow(state.compiling, 1);
         state.compiling->def[state.compiling->deflen - 1] = i;
       } else {
-        interpret(&i, 1);
+        docol(&i, 1);
       }
     } else if (asnum(state.token, &num[1])) {
       num[0] = DEFNUM;
@@ -329,7 +329,7 @@ int main(void) {
         memmove(state.compiling->def + state.compiling->deflen - nelem(num),
                 num, sizeof(num));
       } else {
-        interpret(num, nelem(num));
+        stackpush(num[1]);
       }
     } else {
       state.error = "unknown word";
