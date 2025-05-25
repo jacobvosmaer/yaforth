@@ -23,9 +23,9 @@ struct entry {
 };
 
 struct {
-  int stackp, ndict;
+  int stackp, compiling;
   int stack[1024];
-  struct entry *compiling, dict[1024];
+  struct entry *latest, dict[1024];
   char *error, *token;
 } state;
 
@@ -46,9 +46,8 @@ char *gettoken(void) {
       printf("  token: %s\n", state.token);
     state.error = 0;
     if (state.compiling) {
-      entryreset(state.compiling);
+      entryreset(state.latest--);
       state.compiling = 0;
-      state.ndict--;
     }
     while ((ch = getchar())) { /* discard rest of line */
       if (ch == EOF)
@@ -153,7 +152,7 @@ enum { DEFNUM = -1, DEFJUMPZ = -2, DEFEND = -3 };
 
 void endcompiling(void) {
   mem[nmem++] = DEFEND;
-  state.compiling->flags &= ~F_HIDDEN;
+  state.latest->flags &= ~F_HIDDEN;
   state.compiling = 0;
 }
 
@@ -170,15 +169,15 @@ char *Strdup(char *s) {
 }
 
 void startcompiling(void) {
-  if (state.ndict == nelem(state.dict)) {
+  if (state.latest == endof(state.dict) - 1) {
     state.error = "no room left in dictionary";
   } else {
-    state.compiling = state.dict + state.ndict;
-    state.compiling->flags = F_HIDDEN;
+    state.compiling = 1;
+    state.latest++;
+    state.latest->flags = F_HIDDEN;
     assert(state.token = gettoken());
-    assert(state.dict[state.ndict].word = Strdup(state.token));
-    state.compiling->def = mem + nmem;
-    state.ndict++;
+    assert(state.latest->word = Strdup(state.token));
+    state.latest->def = mem + nmem;
   }
 }
 
@@ -188,7 +187,7 @@ void emit(void) {
     putchar(x);
 }
 
-void immediate(void) { state.dict[state.ndict - 1].flags |= F_IMMEDIATE; }
+void immediate(void) { state.latest->flags |= F_IMMEDIATE; }
 
 void compileif(void) {
   mem[nmem++] = DEFJUMPZ;
@@ -217,7 +216,7 @@ void greaterthan(void) {
     stackpush(x > y);
 }
 
-void recursive(void) { state.compiling->flags &= ~F_HIDDEN; }
+void recursive(void) { state.latest->flags &= ~F_HIDDEN; }
 
 void swap(void) {
   int x, y;
@@ -265,7 +264,7 @@ void initState(void) {
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
-  state.ndict = nelem(initdict);
+  state.latest = state.dict + nelem(initdict) - 1;
 }
 
 void docol(int *def) {
@@ -280,7 +279,7 @@ void docol(int *def) {
       }
     } else {
       struct entry *de = state.dict + *def;
-      assert(de >= state.dict && de < state.dict + state.ndict);
+      assert(de >= state.dict && de <= state.latest);
       if (de->func)
         de->func();
       else
@@ -298,13 +297,13 @@ int asnum(char *token, int *out) {
 int main(void) {
   initState();
   while ((state.token = gettoken())) {
-    int x, i;
-    for (i = state.ndict - 1; i >= 0; i--)
-      if (!(state.dict[i].flags & F_HIDDEN) &&
-          !strcmp(state.dict[i].word, state.token))
+    int x;
+    struct entry *de;
+    for (de = state.latest; de >= state.dict; de--)
+      if (!(de->flags & F_HIDDEN) && !strcmp(de->word, state.token))
         break;
-    if (i >= 0) { /* token found in dict */
-      struct entry *de = state.dict + i;
+    if (de >= state.dict) { /* token found in dict */
+      int i = de - state.dict;
       if (state.compiling && de->flags & F_NOCOMPILE) {
         state.error = "word cannot be used while compiling";
       } else if (!state.compiling && de->flags & F_COMPILE) {
