@@ -1,0 +1,2 @@
+#!/bin/sh
+lldb --one-line "settings set target.input-path $1" --one-line 'process launch' forth
