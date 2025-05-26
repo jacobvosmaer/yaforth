@@ -178,7 +178,7 @@ void clr(void) {
   next();
 }
 
-enum { DEFNUM = -1, DEFJUMPZ = -2, DEFEND = -3 };
+enum { DEFJUMPZ = -2, DEFEND = -3 };
 
 void endcompiling(void) {
   struct entry *exit = find(state.internal, "exit");
@@ -290,12 +290,14 @@ void over(void) {
   next();
 }
 
+void lit(void) {
+  stackpush(mem[++state.pc]);
+  next();
+}
+
 void docol(void) {
   while (mem[state.pc] > DEFEND) {
-    if (mem[state.pc] == DEFNUM) {
-      stackpush(mem[++state.pc]);
-      state.pc++;
-    } else if (mem[state.pc] == DEFJUMPZ) {
+    if (mem[state.pc] == DEFJUMPZ) {
       int x;
       state.pc++;
       if (stackpop(&x) && !x) {
@@ -342,7 +344,8 @@ void interpret(void) {
     }
   } else if (asnum(state.token, &x)) {
     if (state.compiling) {
-      mem[nmem++] = DEFNUM;
+      assert(de = find(state.internal, "lit"));
+      mem[nmem++] = de - state.dict;
       mem[nmem++] = x;
     } else {
       stackpush(x);
@@ -379,7 +382,8 @@ void initState(void) {
                              {"over", over},
                              {".s", stackprint},
                              {"interpret", interpret},
-                             {"exit", exit_}};
+                             {"exit", exit_},
+                             {"lit", lit}};
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
