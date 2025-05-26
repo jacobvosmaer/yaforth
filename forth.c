@@ -300,10 +300,9 @@ void docol(void) {
     if (mem[state.pc] == DEFJUMPZ) {
       int x;
       state.pc++;
-      if (stackpop(&x) && !x) {
+      if (stackpop(&x) && !x) 
         state.pc += mem[state.pc];
-      }
-      state.pc++;
+       state.pc++;
     } else {
       struct entry *de = state.dict + mem[state.pc];
       assert(de >= state.dict && de <= state.latest);
