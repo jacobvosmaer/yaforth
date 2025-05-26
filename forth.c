@@ -302,16 +302,6 @@ void drop(void) {
   next();
 }
 
-void over(void) {
-  int x, y;
-  if (stackpop(&y) && stackpop(&x)) {
-    stackpush(x);
-    stackpush(y);
-    stackpush(x);
-  }
-  next();
-}
-
 void lit(void) {
   stackpush(mem[++state.pc]);
   next();
@@ -415,7 +405,6 @@ void initState(void) {
                              {"recursive", recursive, F_IMMEDIATE | F_COMPILE},
                              {"swap", swap},
                              {"drop", drop},
-                             {"over", over},
                              {".s", stackprint},
                              {"interpret", interpret},
                              {"exit", exit_},
@@ -428,6 +417,7 @@ void initState(void) {
   memmove(state.dict, initdict, sizeof(initdict));
   state.latest = state.dict + nelem(initdict) - 1;
   defword("rot", 0, ">r", "swap", "r>", "swap", "exit", 0);
+  defword("over", 0, ">r", "dup", "r>", "swap", "exit", 0);
   state.internal = state.latest;
 }
 
