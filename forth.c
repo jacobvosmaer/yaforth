@@ -46,10 +46,23 @@ void addhere(int x) {
   mem[nmem++] = x;
 }
 
+int asnum(char *token, int *out) {
+  char *end = 0;
+  *out = strtol(token, &end, 10);
+  return !*end;
+}
+
 void compile(struct entry *start, char *word) {
+  int x;
   struct entry *de = find(start, word);
-  assert(de);
-  addhere(de - state.dict);
+  if (de) {
+    addhere(de - state.dict);
+  } else if (asnum(word, &x)) {
+    compile(start,"lit");
+    addhere(x);
+  } else {
+    assert(0);
+  }
 }
 
 void entryreset(struct entry *e) {
@@ -147,6 +160,11 @@ void tor(void) {
 
 void fromr(void) {
   stackpush(rstackpop());
+  next();
+}
+
+void rspstore(void) {
+  stackpop(&state.rstackp);
   next();
 }
 
@@ -307,6 +325,11 @@ void lit(void) {
   next();
 }
 
+void branch(void) {
+  state.pc++;
+  state.pc += mem[state.pc];
+}
+
 void branch0(void) {
   int x;
   state.pc++;
@@ -327,12 +350,6 @@ void docol(void) {
       state.pc = de->def - mem;
     }
   }
-}
-
-int asnum(char *token, int *out) {
-  char *end = 0;
-  *out = strtol(token, &end, 10);
-  return !*end;
 }
 
 void interpret(void) {
@@ -411,13 +428,16 @@ void initState(void) {
                              {"lit", lit},
                              {"branch0", branch0},
                              {">r", tor},
-                             {"r>", fromr}};
+                             {"r>", fromr},
+                             {"rsp!", rspstore},
+                             {"branch", branch}};
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
   state.latest = state.dict + nelem(initdict) - 1;
   defword("rot", 0, ">r", "swap", "r>", "swap", "exit", 0);
   defword("over", 0, ">r", "dup", "r>", "swap", "exit", 0);
+  defword("quit", 0, "0", "rsp!", "interpret", "branch", "-2", 0);
   state.internal = state.latest;
 }
 
