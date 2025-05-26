@@ -1,3 +1,5 @@
+
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -134,6 +136,18 @@ void stackpush(int x) {
     state.stack[state.stackp++] = x;
   else
     state.error = "stack overflow";
+}
+
+void tor(void) {
+  int x;
+  if (stackpop(&x))
+    rstackpush(x);
+  next();
+}
+
+void fromr(void) {
+  stackpush(rstackpop());
+  next();
 }
 
 void print(void) {
@@ -367,6 +381,21 @@ void exit_(void) {
   next();
 }
 
+void defword(char *word, int flags, ...) {
+  va_list ap;
+  struct entry *de = state.latest + 1;
+  char *w;
+  assert(de < endof(state.dict));
+  assert(de->word = Strdup(word));
+  de->flags = flags | F_HIDDEN;
+  de->def = mem + nmem;
+  va_start(ap, flags);
+  while (w = va_arg(ap, char *), w)
+    compile(de, w);
+  de->flags &= ~F_HIDDEN;
+  state.latest = de;
+}
+
 void initState(void) {
   struct entry initdict[] = {{".", print},
                              {"+", add},
@@ -391,11 +420,14 @@ void initState(void) {
                              {"interpret", interpret},
                              {"exit", exit_},
                              {"lit", lit},
-                             {"branch0", branch0}};
+                             {"branch0", branch0},
+                             {">r", tor},
+                             {"r>", fromr}};
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
   state.latest = state.dict + nelem(initdict) - 1;
+  defword("rot", 0, ">r", "swap", "r>", "swap", "exit", 0);
   state.internal = state.latest;
 }
 
