@@ -58,7 +58,7 @@ void compile(struct entry *start, char *word) {
   if (de) {
     addhere(de - state.dict);
   } else if (asnum(word, &x)) {
-    compile(start,"lit");
+    compile(start, "lit");
     addhere(x);
   } else {
     assert(0);
@@ -399,6 +399,7 @@ void defword(char *word, int flags, ...) {
   va_start(ap, flags);
   while (w = va_arg(ap, char *), w)
     compile(de, w);
+  va_end(ap);
   de->flags &= ~F_HIDDEN;
   state.latest = de;
 }
