@@ -39,6 +39,17 @@ struct entry *find(struct entry *start, char *word) {
   return 0;
 }
 
+void addhere(int x) {
+  assert(nmem < nelem(mem));
+  mem[nmem++] = x;
+}
+
+void compile(struct entry *start, char *word) {
+  struct entry *de = find(start, word);
+  assert(de);
+  addhere(de - state.dict);
+}
+
 void entryreset(struct entry *e) {
   struct entry empty = {0};
   *e = empty;
@@ -181,11 +192,8 @@ void clr(void) {
 enum { DEFEND = -1 };
 
 void endcompiling(void) {
-  struct entry *exit = find(state.internal, "exit");
-  assert(exit);
-  assert(nmem < nelem(mem) - 2);
-  mem[nmem++] = exit - state.dict;
-  mem[nmem++] = DEFEND;
+  compile(state.internal, "exit");
+  addhere(DEFEND);
   state.latest->flags &= ~F_HIDDEN;
   state.compiling = 0;
   next();
@@ -230,9 +238,7 @@ void immediate(void) {
 }
 
 void compileif(void) {
-  struct entry *b0 = find(state.internal, "branch0");
-  assert(b0);
-  mem[nmem++] = b0 - state.dict;
+  compile(state.internal, "branch0");
   stackpush(nmem++);
   next();
 }
@@ -337,7 +343,7 @@ void interpret(void) {
     } else if (!state.compiling && de->flags & F_COMPILE) {
       state.error = "word can only be used while compiling";
     } else if (state.compiling && !(de->flags & F_IMMEDIATE)) {
-      mem[nmem++] = i;
+      addhere(i);
     } else {
       mem[0] = i;
       mem[1] = DEFEND;
@@ -346,9 +352,8 @@ void interpret(void) {
     }
   } else if (asnum(state.token, &x)) {
     if (state.compiling) {
-      assert(de = find(state.internal, "lit"));
-      mem[nmem++] = de - state.dict;
-      mem[nmem++] = x;
+      compile(state.internal, "lit");
+      addhere(x);
     } else {
       stackpush(x);
     }
