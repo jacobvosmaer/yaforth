@@ -243,7 +243,7 @@ void compilethen(void) {
     return;
   assert(x >= 0 && x < nmem);
   /* compute and store relative jump offset */
-  mem[x] = nmem - x - 1;
+  mem[x] = nmem - x;
 }
 
 void equal(void) {
@@ -300,9 +300,10 @@ void docol(void) {
     if (mem[state.pc] == DEFJUMPZ) {
       int x;
       state.pc++;
-      if (stackpop(&x) && !x) 
+      if (stackpop(&x) && !x)
         state.pc += mem[state.pc];
-       state.pc++;
+      else
+        state.pc++;
     } else {
       struct entry *de = state.dict + mem[state.pc];
       assert(de >= state.dict && de <= state.latest);
