@@ -178,7 +178,7 @@ void clr(void) {
   next();
 }
 
-enum { DEFJUMPZ = -2, DEFEND = -3 };
+enum { DEFEND = -1 };
 
 void endcompiling(void) {
   struct entry *exit = find(state.internal, "exit");
@@ -230,7 +230,9 @@ void immediate(void) {
 }
 
 void compileif(void) {
-  mem[nmem++] = DEFJUMPZ;
+  struct entry *b0 = find(state.internal, "branch0");
+  assert(b0);
+  mem[nmem++] = b0 - state.dict;
   stackpush(nmem++);
   next();
 }
@@ -295,24 +297,24 @@ void lit(void) {
   next();
 }
 
+void branch0(void) {
+  int x;
+  state.pc++;
+  if (stackpop(&x) && !x)
+    state.pc += mem[state.pc];
+  else
+    state.pc++;
+}
+
 void docol(void) {
   while (mem[state.pc] > DEFEND) {
-    if (mem[state.pc] == DEFJUMPZ) {
-      int x;
-      state.pc++;
-      if (stackpop(&x) && !x)
-        state.pc += mem[state.pc];
-      else
-        state.pc++;
+    struct entry *de = state.dict + mem[state.pc];
+    assert(de >= state.dict && de <= state.latest);
+    if (de->func) {
+      de->func();
     } else {
-      struct entry *de = state.dict + mem[state.pc];
-      assert(de >= state.dict && de <= state.latest);
-      if (de->func) {
-        de->func();
-      } else {
-        rstackpush(state.pc);
-        state.pc = de->def - mem;
-      }
+      rstackpush(state.pc);
+      state.pc = de->def - mem;
     }
   }
 }
@@ -383,7 +385,8 @@ void initState(void) {
                              {".s", stackprint},
                              {"interpret", interpret},
                              {"exit", exit_},
-                             {"lit", lit}};
+                             {"lit", lit},
+                             {"branch0", branch0}};
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
