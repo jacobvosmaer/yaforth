@@ -82,15 +82,18 @@ char *gettoken(void) {
   while (n < sizeof(tokbuf)) {
     ch = getchar();
     if (ch == EOF) {
-      return 0;
+      if (n) {
+        tokbuf[n] = 0;
+        return tokbuf;
+      } else {
+        return 0;
+      }
     } else if (space(ch) && n) {
       /* keeping ch in the input buffer allows us to discard the rest of the
        * line later if needed */
       ungetc(ch, stdin);
       tokbuf[n] = 0;
       return tokbuf;
-    } else if (ch == '\n') {
-      puts("  ok");
     } else if (!space(ch)) {
       tokbuf[n++] = ch;
     }
@@ -431,6 +434,7 @@ void initState(void) {
   defword("rot", 0, ">r", "swap", "r>", "swap", "exit", 0);
   defword("over", 0, ">r", "dup", "r>", "swap", "exit", 0);
   defword("quit", 0, "0", "rsp!", "interpret", "branch", "-2", 0);
+  defword("cr", 0, "10", "emit", "exit", 0);
   state.internal = state.latest;
 }
 
