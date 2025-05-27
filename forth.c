@@ -79,27 +79,15 @@ char tokbuf[256];
 int space(int ch) { return ch == ' ' || ch == '\n'; }
 char *gettoken(void) {
   int ch, n = 0;
-  if (state.error) {
-    printf("  error: %s\n", state.error);
-    if (state.token)
-      printf("  token: %s\n", state.token);
-    state.error = 0;
-    state.compiling = 0;
-    while ((ch = getchar())) { /* discard rest of line */
-      if (ch == EOF)
-        return 0;
-      else if (ch == '\n')
-        break;
-    }
-  }
   while (n < sizeof(tokbuf)) {
     ch = getchar();
     if (ch == EOF) {
       return 0;
     } else if (space(ch) && n) {
+      /* keeping ch in the input buffer allows us to discard the rest of the
+       * line later if needed */
+      ungetc(ch, stdin);
       tokbuf[n] = 0;
-      if (ch == '\n') /* trigger printing of state.error */
-        ungetc(ch, stdin);
       return tokbuf;
     } else if (ch == '\n') {
       puts("  ok");
@@ -344,7 +332,7 @@ void docol(void) {
 }
 
 void interpret(void) {
-  int x;
+  int x, ch;
   struct entry *de;
   if (state.token = gettoken(), !state.token)
     exit(0);
@@ -371,6 +359,19 @@ void interpret(void) {
     }
   } else {
     state.error = "unknown word";
+  }
+  if (state.error) {
+    printf("  error: %s\n", state.error);
+    if (state.token)
+      printf("  token: %s\n", state.token);
+    state.error = 0;
+    state.compiling = 0;
+    while ((ch = getchar())) { /* discard rest of line */
+      if (ch == EOF)
+        exit(0);
+      else if (ch == '\n')
+        break;
+    }
   }
 }
 
