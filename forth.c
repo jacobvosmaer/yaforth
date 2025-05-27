@@ -225,7 +225,6 @@ enum { DEFEND = -1 };
 
 void endcompiling(void) {
   compile(state.internal, "exit");
-  addhere(DEFEND);
   state.latest->flags &= ~F_HIDDEN;
   state.compiling = 0;
   next();
