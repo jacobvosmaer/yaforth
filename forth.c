@@ -276,13 +276,12 @@ void compileif(void) {
 
 void compilethen(void) {
   int x;
+  if (stackpop(&x)) { /* retrieve start of if body */
+    assert(x >= 0 && x < nmem);
+    /* compute and store relative jump offset */
+    mem[x] = nmem - x;
+  }
   next();
-  /* retrieve start of if body */
-  if (!stackpop(&x))
-    return;
-  assert(x >= 0 && x < nmem);
-  /* compute and store relative jump offset */
-  mem[x] = nmem - x;
 }
 
 void equal(void) {
