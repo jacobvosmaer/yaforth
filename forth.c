@@ -65,11 +65,6 @@ void compile(struct entry *start, char *word) {
   }
 }
 
-void entryreset(struct entry *e) {
-  struct entry empty = {0};
-  *e = empty;
-}
-
 void rstackpush(int x) {
   assert(state.rstackp < nelem(state.rstack));
   state.rstack[state.rstackp++] = x;
@@ -89,10 +84,7 @@ char *gettoken(void) {
     if (state.token)
       printf("  token: %s\n", state.token);
     state.error = 0;
-    if (state.compiling) {
-      entryreset(state.latest--);
-      state.compiling = 0;
-    }
+    state.compiling = 0;
     while ((ch = getchar())) { /* discard rest of line */
       if (ch == EOF)
         return 0;
@@ -248,9 +240,10 @@ void startcompiling(void) {
   } else {
     state.compiling = 1;
     state.latest++;
-    state.latest->flags = F_HIDDEN;
     assert(state.token = gettoken());
     assert(state.latest->word = Strdup(state.token));
+    state.latest->flags = F_HIDDEN;
+    state.latest->func = 0;
     state.latest->def = mem + nmem;
   }
   next();
