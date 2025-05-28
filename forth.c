@@ -10,12 +10,7 @@
   while (!(x))                                                                 \
   __builtin_trap()
 
-enum {
-  F_IMMEDIATE = 1 << 0,
-  F_COMPILE = 1 << 1,
-  F_NOCOMPILE = 1 << 2,
-  F_HIDDEN = 1 << 3
-};
+enum { F_IMMEDIATE = 1 << 0, F_HIDDEN = 1 << 1 };
 
 struct entry {
   char *word;
@@ -368,11 +363,7 @@ void interpret(void) {
     exit(0);
   if (de = find(state.latest, state.token), de >= state.dict) {
     int i = de - state.dict;
-    if (state.compiling && de->flags & F_NOCOMPILE) {
-      state.error = "word cannot be used while compiling";
-    } else if (!state.compiling && de->flags & F_COMPILE) {
-      state.error = "word can only be used while compiling";
-    } else if (state.compiling && !(de->flags & F_IMMEDIATE)) {
+    if (state.compiling && !(de->flags & F_IMMEDIATE)) {
       addhere(i);
     } else {
       /* Instead of calling next, jump to word de, and let its next load word in
@@ -445,15 +436,15 @@ void initState(void) {
                              {"/", divi},
                              {"clr", clr},
                              {"dup", dup},
-                             {";", endcompiling, F_IMMEDIATE | F_COMPILE},
-                             {":", startcompiling, F_NOCOMPILE},
+                             {";", endcompiling, F_IMMEDIATE},
+                             {":", startcompiling},
                              {"emit", emit},
                              {"immediate", immediate, F_IMMEDIATE},
                              {"=", equal},
-                             {"if", compileif, F_IMMEDIATE | F_COMPILE},
-                             {"then", compilethen, F_IMMEDIATE | F_COMPILE},
+                             {"if", compileif, F_IMMEDIATE},
+                             {"then", compilethen, F_IMMEDIATE},
                              {">", greaterthan},
-                             {"recursive", recursive, F_IMMEDIATE | F_COMPILE},
+                             {"recursive", recursive, F_IMMEDIATE},
                              {"swap", swap},
                              {"drop", drop},
                              {".s", stackprint},
@@ -470,7 +461,7 @@ void initState(void) {
                              {"!", store},
                              {"@", fetch},
                              {"[", lbrac, F_IMMEDIATE},
-                             {"]", rbrac, F_NOCOMPILE}};
+                             {"]", rbrac}};
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
