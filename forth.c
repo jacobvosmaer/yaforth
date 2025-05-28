@@ -22,8 +22,9 @@ struct entry {
 struct {
   int stackp, rstackp, compiling;
   int stack[1024], rstack[1024];
+  char word[256];
   struct entry *latest, *internal, dict[1024];
-  char *error, *token;
+  char *error;
 } state;
 
 struct {
@@ -31,6 +32,8 @@ struct {
 } vm;
 
 int mem[8192], nmem;
+
+void next(void) { vm.current = mem[vm.next++]; }
 
 struct entry *find(struct entry *start, char *word) {
   struct entry *de;
@@ -74,33 +77,31 @@ int rstackpop(void) {
   return state.rstack[--state.rstackp];
 }
 
-char tokbuf[256];
 int space(int ch) { return ch == ' ' || ch == '\n'; }
-char *gettoken(void) {
+void gettoken(void) {
   int ch, n = 0;
-  while (n < sizeof(tokbuf)) {
+  while (n < sizeof(state.word)) {
     ch = getchar();
     if (ch == EOF) {
-      if (n) {
-        tokbuf[n] = 0;
-        return tokbuf;
-      } else {
-        return 0;
-      }
+      state.word[n] = 0;
+      return;
     } else if (space(ch) && n) {
       /* keeping ch in the input buffer allows us to discard the rest of the
        * line later if needed */
       ungetc(ch, stdin);
-      tokbuf[n] = 0;
-      return tokbuf;
+      state.word[n] = 0;
+      return;
     } else if (!space(ch)) {
-      tokbuf[n++] = ch;
+      state.word[n++] = ch;
     }
   }
   assert(0);
 }
 
-void next(void) { vm.current = mem[vm.next++]; }
+void word(void) {
+  gettoken();
+  next();
+}
 
 void defprint(int *def, int deflen) {
   fprintf(stderr, "def:");
@@ -224,18 +225,33 @@ char *Strdup(char *s) {
 
 void docol(void);
 
-void startcompiling(void) {
+void create_(void) {
   if (state.latest == endof(state.dict) - 1) {
     state.error = "no room left in dictionary";
   } else {
-    state.compiling = 1;
     state.latest++;
-    assert(state.token = gettoken());
-    assert(state.latest->word = Strdup(state.token));
-    state.latest->flags = F_HIDDEN;
+    assert(*state.word);
+    assert(state.latest->word = Strdup(state.word));
+    state.latest->flags = 0;
     state.latest->func = docol;
     state.latest->def = mem + nmem;
   }
+}
+
+void create(void) {
+  create_();
+  next();
+}
+
+void latest(void) {
+  stackpush(state.latest - state.dict);
+  next();
+}
+
+void hidden(void) {
+  int i;
+  if (stackpop(&i))
+    state.dict[i].flags ^= F_HIDDEN;
   next();
 }
 
@@ -359,19 +375,19 @@ void docol(void) {
 void interpret(void) {
   int x, ch;
   struct entry *de;
-  if (state.token = gettoken(), !state.token)
+  if (gettoken(), !*state.word)
     exit(0);
-  if (de = find(state.latest, state.token), de >= state.dict) {
+  if (de = find(state.latest, state.word), de >= state.dict) {
     int i = de - state.dict;
     if (state.compiling && !(de->flags & F_IMMEDIATE)) {
       addhere(i);
     } else {
-      /* Instead of calling next, jump to word de, and let its next load word in
-       * the current sequence (usually the next word in quit). */
+      /* Instead of calling next, jump to word de, and let its next load word
+       * in the current sequence (usually the next word in quit). */
       vm.current = i;
       return;
     }
-  } else if (asnum(state.token, &x)) {
+  } else if (asnum(state.word, &x)) {
     if (state.compiling) {
       compile(state.internal, "lit");
       addhere(x);
@@ -383,8 +399,8 @@ void interpret(void) {
   }
   if (state.error) {
     printf("  error: %s\n", state.error);
-    if (state.token)
-      printf("  token: %s\n", state.token);
+    if (*state.word)
+      printf("  token: %s\n", state.word);
     state.error = 0;
     state.compiling = 0;
     while ((ch = getchar())) { /* discard rest of line */
@@ -437,7 +453,6 @@ void initState(void) {
                              {"clr", clr},
                              {"dup", dup},
                              {";", endcompiling, F_IMMEDIATE},
-                             {":", startcompiling},
                              {"emit", emit},
                              {"immediate", immediate, F_IMMEDIATE},
                              {"=", equal},
@@ -461,7 +476,11 @@ void initState(void) {
                              {"!", store},
                              {"@", fetch},
                              {"[", lbrac, F_IMMEDIATE},
-                             {"]", rbrac}};
+                             {"]", rbrac},
+                             {"word", word},
+                             {"create", create},
+                             {"latest", latest},
+                             {"hidden", hidden}};
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
@@ -470,6 +489,7 @@ void initState(void) {
   defword("over", 0, ">r", "dup", "r>", "swap", "exit", 0);
   defword("quit", 0, "0", "rsp!", "interpret", "branch", "-2", 0);
   defword("cr", 0, "10", "emit", "exit", 0);
+  defword(":", 0, "word", "create", "latest", "hidden", "]", "exit", 0);
   state.internal = state.latest;
 }
 
