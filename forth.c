@@ -411,6 +411,15 @@ void exit_(void) {
   next();
 }
 
+void lbrac(void) {
+  state.compiling = 0;
+  next();
+}
+void rbrac(void) {
+  state.compiling = 1;
+  next();
+}
+
 void defword(char *word, int flags, ...) {
   va_list ap;
   struct entry *de = state.latest + 1;
@@ -459,7 +468,9 @@ void initState(void) {
                              {"here", here},
                              {",", comma},
                              {"!", store},
-                             {"@", fetch}};
+                             {"@", fetch},
+                             {"[", lbrac, F_IMMEDIATE},
+                             {"]", rbrac, F_NOCOMPILE}};
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
