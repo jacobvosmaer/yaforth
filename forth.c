@@ -25,13 +25,17 @@ struct entry {
 };
 
 struct {
-  int stackp, rstackp, pc, compiling;
+  int stackp, rstackp, compiling;
   int stack[1024], rstack[1024];
   struct entry *latest, *internal, dict[1024];
   char *error, *token;
 } state;
 
-int mem[8192], nmem = 2; /* reserve space for interpret */
+struct {
+  int next, current;
+} vm;
+
+int mem[8192], nmem;
 
 struct entry *find(struct entry *start, char *word) {
   struct entry *de;
@@ -101,7 +105,7 @@ char *gettoken(void) {
   assert(0);
 }
 
-void next(void) { state.pc++; }
+void next(void) { vm.current = mem[vm.next++]; }
 
 void defprint(int *def, int deflen) {
   fprintf(stderr, "def:");
@@ -204,8 +208,6 @@ void clr(void) {
   next();
 }
 
-enum { DEFEND = -1 };
-
 void endcompiling(void) {
   compile(state.internal, "exit");
   state.latest->flags &= ~F_HIDDEN;
@@ -225,6 +227,8 @@ char *Strdup(char *s) {
   return p;
 }
 
+void docol(void);
+
 void startcompiling(void) {
   if (state.latest == endof(state.dict) - 1) {
     state.error = "no room left in dictionary";
@@ -234,7 +238,7 @@ void startcompiling(void) {
     assert(state.token = gettoken());
     assert(state.latest->word = Strdup(state.token));
     state.latest->flags = F_HIDDEN;
-    state.latest->func = 0;
+    state.latest->func = docol;
     state.latest->def = mem + nmem;
   }
   next();
@@ -303,35 +307,29 @@ void drop(void) {
 }
 
 void lit(void) {
-  stackpush(mem[++state.pc]);
+  stackpush(mem[vm.next++]);
   next();
 }
 
 void branch(void) {
-  state.pc++;
-  state.pc += mem[state.pc];
+  vm.next++;
+  vm.next += mem[vm.next] - 1;
+  next();
 }
 
 void branch0(void) {
   int x;
-  state.pc++;
   if (stackpop(&x) && !x)
-    state.pc += mem[state.pc];
-  else
-    state.pc++;
+    vm.next += mem[vm.next];
+  next();
 }
 
 void docol(void) {
-  while (mem[state.pc] > DEFEND) {
-    struct entry *de = state.dict + mem[state.pc];
-    assert(de >= state.dict && de <= state.latest);
-    if (de->func) {
-      de->func();
-    } else {
-      rstackpush(state.pc);
-      state.pc = de->def - mem;
-    }
-  }
+  struct entry *de = state.dict + vm.current;
+  assert(de >= state.dict && de <= state.latest);
+  rstackpush(vm.next);
+  vm.next = de->def - mem;
+  next();
 }
 
 void interpret(void) {
@@ -348,10 +346,10 @@ void interpret(void) {
     } else if (state.compiling && !(de->flags & F_IMMEDIATE)) {
       addhere(i);
     } else {
-      mem[0] = i;
-      mem[1] = DEFEND;
-      state.pc = 0;
-      docol();
+      /* Instead of calling next, jump to word de, and let its next load word in
+       * the current sequence (usually the next word in quit). */
+      vm.current = i;
+      return;
     }
   } else if (asnum(state.token, &x)) {
     if (state.compiling) {
@@ -376,10 +374,11 @@ void interpret(void) {
         break;
     }
   }
+  next();
 }
 
 void exit_(void) {
-  state.pc = rstackpop();
+  vm.next = rstackpop();
   next();
 }
 
@@ -391,6 +390,7 @@ void defword(char *word, int flags, ...) {
   assert(de->word = Strdup(word));
   de->flags = flags | F_HIDDEN;
   de->def = mem + nmem;
+  de->func = docol;
   va_start(ap, flags);
   while (w = va_arg(ap, char *), w)
     compile(de, w);
@@ -439,8 +439,12 @@ void initState(void) {
 }
 
 int main(void) {
+  struct entry *quit;
   initState();
+  assert(quit = find(state.internal, "quit"));
+  vm.current = quit - state.dict;
+  vm.next = quit->def - mem;
   while (1)
-    interpret();
+    state.dict[vm.current].func();
   return 0;
 }
