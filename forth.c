@@ -324,6 +324,35 @@ void branch0(void) {
   next();
 }
 
+void here(void) {
+  stackpush(nmem);
+  next();
+}
+
+void comma(void) {
+  assert(nmem < nelem(mem));
+  stackpop(mem + nmem++);
+  next();
+}
+
+void store(void) {
+  int addr, x;
+  if (stackpop(&addr) && stackpop(&x)) {
+    assert(addr >= 0 && addr < nelem(mem));
+    mem[addr] = x;
+  }
+  next();
+}
+
+void fetch(void) {
+  int addr;
+  if (stackpop(&addr)) {
+    assert(addr >= 0 && addr < nelem(mem));
+    stackpush(mem[addr]);
+  }
+  next();
+}
+
 void docol(void) {
   struct entry *de = state.dict + vm.current;
   assert(de >= state.dict && de <= state.latest);
@@ -426,7 +455,11 @@ void initState(void) {
                              {">r", tor},
                              {"r>", fromr},
                              {"rsp!", rspstore},
-                             {"branch", branch}};
+                             {"branch", branch},
+                             {"here", here},
+                             {",", comma},
+                             {"!", store},
+                             {"@", fetch}};
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
