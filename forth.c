@@ -281,12 +281,6 @@ void immediate(void) {
   next();
 }
 
-void compileif(void) {
-  compile(state.internal, "branch0");
-  stackpush(nmem++);
-  next();
-}
-
 void compilethen(void) {
   int x;
   if (stackpop(&x)) { /* retrieve start of if body */
@@ -460,6 +454,7 @@ void defword(char *word, int flags, ...) {
 void initState(void) {
   struct entry initdict[] = {
       {"exit", exit_},
+      {"branch0", branch0},
       {".", print},
       {"+", add},
       {"-", sub},
@@ -470,7 +465,6 @@ void initState(void) {
       {"emit", emit},
       {"immediate", immediate, F_IMMEDIATE},
       {"=", equal},
-      {"if", compileif, F_IMMEDIATE},
       {"then", compilethen, F_IMMEDIATE},
       {">", greaterthan},
       {"recursive", recursive, F_IMMEDIATE},
@@ -479,7 +473,6 @@ void initState(void) {
       {".s", stackprint},
       {"interpret", interpret},
       {"lit", lit},
-      {"branch0", branch0},
       {">r", tor},
       {"r>", fromr},
       {"rsp!", rspstore},
@@ -501,6 +494,7 @@ void initState(void) {
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
   assert(!strcmp(state.dict[0].word, "exit"));
+  assert(!strcmp(state.dict[1].word, "branch0"));
   state.latest = state.dict + nelem(initdict) - 1;
   defword("rot", 0, ">r", "swap", "r>", "swap", "exit", 0);
   defword("over", 0, ">r", "dup", "r>", "swap", "exit", 0);
@@ -508,6 +502,7 @@ void initState(void) {
   defword("cr", 0, "10", "emit", "exit", 0);
   defword(":", 0, "word", "create", "latest", "hiddenset", "]", "exit", 0);
   defword(";", F_IMMEDIATE, "0", ",", "latest", "hiddenclr", "[", "exit", 0);
+  defword("if", F_IMMEDIATE, "1", ",", "here", "0", ",", "exit", 0);
   state.internal = state.latest;
 }
 
