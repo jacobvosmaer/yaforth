@@ -255,6 +255,20 @@ void hidden(void) {
   next();
 }
 
+void hiddenset(void) {
+  int i;
+  if (stackpop(&i))
+    state.dict[i].flags |= F_HIDDEN;
+  next();
+}
+
+void hiddenclr(void) {
+  int i;
+  if (stackpop(&i))
+    state.dict[i].flags &= ~F_HIDDEN;
+  next();
+}
+
 void emit(void) {
   int x;
   if (stackpop(&x))
@@ -445,6 +459,7 @@ void defword(char *word, int flags, ...) {
 
 void initState(void) {
   struct entry initdict[] = {
+      {"exit", exit_},
       {".", print},
       {"+", add},
       {"-", sub},
@@ -452,7 +467,6 @@ void initState(void) {
       {"/", divi},
       {"clr", clr},
       {"dup", dup},
-      {";", endcompiling, F_IMMEDIATE},
       {"emit", emit},
       {"immediate", immediate, F_IMMEDIATE},
       {"=", equal},
@@ -464,7 +478,6 @@ void initState(void) {
       {"drop", drop},
       {".s", stackprint},
       {"interpret", interpret},
-      {"exit", exit_},
       {"lit", lit},
       {"branch0", branch0},
       {">r", tor},
@@ -481,16 +494,20 @@ void initState(void) {
       {"create", create},
       {"latest", latest},
       {"hidden", hidden},
+      {"hiddenset", hiddenset},
+      {"hiddenclr", hiddenclr},
   };
   memset(&state, 0, sizeof(state));
   assert(sizeof(initdict) <= sizeof(state.dict));
   memmove(state.dict, initdict, sizeof(initdict));
+  assert(!strcmp(state.dict[0].word, "exit"));
   state.latest = state.dict + nelem(initdict) - 1;
   defword("rot", 0, ">r", "swap", "r>", "swap", "exit", 0);
   defword("over", 0, ">r", "dup", "r>", "swap", "exit", 0);
   defword("quit", 0, "0", "rsp!", "interpret", "branch", "-2", 0);
   defword("cr", 0, "10", "emit", "exit", 0);
-  defword(":", 0, "word", "create", "latest", "hidden", "]", "exit", 0);
+  defword(":", 0, "word", "create", "latest", "hiddenset", "]", "exit", 0);
+  defword(";", F_IMMEDIATE, "0", ",", "latest", "hiddenclr", "[", "exit", 0);
   state.internal = state.latest;
 }
 
