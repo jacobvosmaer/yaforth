@@ -382,8 +382,8 @@ void interpret(void) {
     if (state.compiling && !(de->flags & F_IMMEDIATE)) {
       addhere(i);
     } else {
-      /* Instead of calling next, jump to word de, and let its next load word
-       * in the current sequence (usually the next word in quit). */
+      /* Do not call next(), jump straight to i. Someone else will call next()
+       * eventually. */
       vm.current = i;
       return;
     }
@@ -403,11 +403,9 @@ void interpret(void) {
       printf("  token: %s\n", state.word);
     state.error = 0;
     state.compiling = 0;
-    while ((ch = getchar())) { /* discard rest of line */
+    while (ch = getchar(), ch != '\n') { /* discard rest of line */
       if (ch == EOF)
         exit(0);
-      else if (ch == '\n')
-        break;
     }
   }
   next();
