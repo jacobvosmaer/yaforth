@@ -103,13 +103,6 @@ void word(void) {
   next();
 }
 
-void defprint(int *def, int deflen) {
-  fprintf(stderr, "def:");
-  while (deflen-- > 0)
-    fprintf(stderr, " %d", *def++);
-  fputc('\n', stderr);
-}
-
 void stackprint(void) {
   int i;
   printf("<%d>", state.stackp);
