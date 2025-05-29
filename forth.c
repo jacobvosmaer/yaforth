@@ -403,10 +403,9 @@ void interpret(void) {
       printf("  token: %s\n", state.word);
     state.error = 0;
     state.compiling = 0;
-    while (ch = getchar(), ch != '\n') { /* discard rest of line */
+    while (ch = getchar(), ch != '\n') /* discard rest of line */
       if (ch == EOF)
         exit(0);
-    }
   }
   next();
 }
