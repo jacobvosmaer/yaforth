@@ -281,16 +281,6 @@ void immediate(void) {
   next();
 }
 
-void compilethen(void) {
-  int x;
-  if (stackpop(&x)) { /* retrieve start of if body */
-    assert(x >= 0 && x < nmem);
-    /* compute and store relative jump offset */
-    mem[x] = nmem - x;
-  }
-  next();
-}
-
 void equal(void) {
   int x, y;
   if (stackpop(&y) && stackpop(&x))
@@ -465,7 +455,6 @@ void initState(void) {
       {"emit", emit},
       {"immediate", immediate, F_IMMEDIATE},
       {"=", equal},
-      {"then", compilethen, F_IMMEDIATE},
       {">", greaterthan},
       {"recursive", recursive, F_IMMEDIATE},
       {"swap", swap},
@@ -503,6 +492,8 @@ void initState(void) {
   defword(":", 0, "word", "create", "latest", "hiddenset", "]", "exit", 0);
   defword(";", F_IMMEDIATE, "0", ",", "latest", "hiddenclr", "[", "exit", 0);
   defword("if", F_IMMEDIATE, "1", ",", "here", "0", ",", "exit", 0);
+  defword("then", F_IMMEDIATE, "dup", "here", "swap", "-", "swap", "!", "exit",
+          0);
   state.internal = state.latest;
 }
 
