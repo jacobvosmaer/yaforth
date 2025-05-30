@@ -15,6 +15,6 @@
 : while immediate ' branch0 , here 0 , ;
 : repeat immediate ' branch , swap here - , dup here swap - swap ! ;
 : ."
-  begin key dup 32 = while drop repeat emit
+  key drop \ skip exactly 1 blank after first quote
   begin key dup dup 34 <> swap -1 > and while emit repeat drop
 ;
