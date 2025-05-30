@@ -512,16 +512,9 @@ void initdict(void) {
   defword(";", F_IMMEDIATE, "' exit , latest hiddenclr [ exit");
 }
 
-void initvm(void) {
-  struct entry *quit;
-  assert(quit = find(dictlatest, "quit"));
-  vm.current = quit - dict;
-  vm.next = quit->def - mem;
-}
-
 int main(void) {
   initdict();
-  initvm();
+  vm.current = find(dictlatest, "quit") - dict;
   while (1)
     dict[vm.current].func();
   return 0;
