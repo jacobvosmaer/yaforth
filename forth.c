@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "builtin.h"
+
 #define nelem(x) (sizeof(x) / sizeof(*(x)))
 #define endof(x) ((x) + nelem(x))
 #define assert(x)                                                              \
@@ -89,19 +91,32 @@ int rstackpop(void) {
   return rstack[--rstackp];
 }
 
+int builtinp;
+
+int Getchar(void) {
+  return builtinp < nelem(builtinforth) ? builtinforth[builtinp++] : getchar();
+}
+
+void Ungetchar(int c) {
+  if (builtinp > 0 && builtinp <= nelem(builtinforth))
+    builtinforth[--builtinp] = c;
+  else
+    ungetc(c, stdin);
+}
+
 int space(int ch) { return ch == ' ' || ch == '\n'; }
 
 void gettoken(void) {
   int ch, n = 0;
   while (n < sizeof(wordbuf)) {
-    ch = getchar();
+    ch = Getchar();
     if (ch == EOF) {
       wordbuf[n] = 0;
       return;
     } else if (space(ch) && n) {
       /* keeping ch in the input buffer allows us to discard the rest of the
        * line later if needed */
-      ungetc(ch, stdin);
+      Ungetchar(ch);
       wordbuf[n] = 0;
       return;
     } else if (!space(ch)) {
@@ -112,7 +127,7 @@ void gettoken(void) {
 }
 
 void key(void) {
-  stackpush(getchar());
+  stackpush(Getchar());
   next();
 }
 
@@ -487,22 +502,9 @@ void initdict(void) {
   assert(sizeof(builtin) <= sizeof(dict));
   memmove(dict, builtin, sizeof(builtin));
   dictlatest = dict + nelem(builtin) - 1;
-  defword("rot", 0, ">r swap r> swap exit");
-  defword("over", 0, ">r dup r> swap exit");
   defword("quit", 0, "lit 0 rsp! interpret branch -2");
-  defword("cr", 0, "lit 10 emit exit");
   defword(":", 0, "word create latest hiddenset ] exit");
   defword(";", F_IMMEDIATE, "' exit , latest hiddenclr [ exit");
-  defword("if", F_IMMEDIATE, "' branch0 , here lit 0 , exit");
-  defword("then", F_IMMEDIATE, "dup here swap - swap ! exit");
-  defword("not", 0, "lit 0 = exit");
-  defword("and", 0, "not not swap not not * exit");
-  defword("or", 0, "not swap not and not exit");
-  defword("begin", F_IMMEDIATE, "here exit");
-  defword("again", F_IMMEDIATE, "' branch , here - , exit");
-  defword("while", F_IMMEDIATE, "' branch0 , here lit 0 , exit");
-  defword("repeat", F_IMMEDIATE,
-          "' branch , swap here - , dup here swap - swap ! exit");
 }
 
 void initvm(void) {

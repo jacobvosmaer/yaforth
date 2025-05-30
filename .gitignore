@@ -1,2 +1,5 @@
 forth
 *.dSYM/
+builtin
+*.o
+builtin.h
