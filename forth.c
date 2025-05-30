@@ -495,6 +495,9 @@ void initdict(void) {
   defword("or", 0, "not swap not and not exit");
   defword("begin", F_IMMEDIATE, "here exit");
   defword("again", F_IMMEDIATE, "' branch , here - , exit");
+  defword("while", F_IMMEDIATE, "' branch0 , here lit 0 , exit");
+  defword("repeat", F_IMMEDIATE,
+          "' branch , swap here - , dup here swap - swap ! exit");
 }
 
 void initvm(void) {

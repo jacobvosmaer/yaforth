@@ -1,0 +1,2 @@
+: test 0 >r begin r> dup >r 3 < while r> 1 + dup . >r repeat r> drop ;
+test cr .s
