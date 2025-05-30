@@ -196,13 +196,6 @@ void clr(void) {
   next();
 }
 
-void endcompiling(void) {
-  compile(dictinternal, "exit");
-  dictlatest->flags &= ~F_HIDDEN;
-  compiling = 0;
-  next();
-}
-
 char *Strdup(char *s) {
   char *p = (char *)(mem + nmem);
   int len = strlen(s), mask = sizeof(*mem) - 1,
