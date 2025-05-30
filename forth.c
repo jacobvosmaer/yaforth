@@ -400,6 +400,7 @@ void lbrac(void) {
   compiling = 0;
   next();
 }
+
 void rbrac(void) {
   compiling = 1;
   next();
