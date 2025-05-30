@@ -17,7 +17,7 @@ struct entry {
   void (*func)(void);
   int flags;
   int *def;
-} *dictlatest, *dictinternal, dict[1024];
+} *dictlatest, dict[1024];
 
 int compiling;
 
@@ -370,7 +370,7 @@ void interpret(void) {
     }
   } else if (asnum(wordbuf, &x)) {
     if (compiling) {
-      compile(dictinternal, "lit");
+      compile(dictlatest, "lit");
       addhere(x);
     } else {
       stackpush(x);
@@ -403,6 +403,11 @@ void lbrac(void) {
 
 void rbrac(void) {
   compiling = 1;
+  next();
+}
+
+void tick(void) {
+  stackpush(mem[vm.next++]);
   next();
 }
 
@@ -460,30 +465,28 @@ void initState(void) {
       {"hidden", hidden},
       {"hiddenset", hiddenset},
       {"hiddenclr", hiddenclr},
+      {"'", tick},
   };
   assert(sizeof(initdict) <= sizeof(dict));
   memmove(dict, initdict, sizeof(initdict));
-  assert(!strcmp(dict[0].word, "exit"));
-  assert(!strcmp(dict[1].word, "branch0"));
   dictlatest = dict + nelem(initdict) - 1;
   defword("rot", 0, ">r", "swap", "r>", "swap", "exit", 0);
   defword("over", 0, ">r", "dup", "r>", "swap", "exit", 0);
   defword("quit", 0, "lit", "0", "rsp!", "interpret", "branch", "-2", 0);
   defword("cr", 0, "lit", "10", "emit", "exit", 0);
   defword(":", 0, "word", "create", "latest", "hiddenset", "]", "exit", 0);
-  defword(";", F_IMMEDIATE, "lit", "0", ",", "latest", "hiddenclr", "[", "exit",
-          0);
-  defword("if", F_IMMEDIATE, "lit", "1", ",", "here", "lit", "0", ",", "exit",
-          0);
+  defword(";", F_IMMEDIATE, "'", "exit", ",", "latest", "hiddenclr", "[",
+          "exit", 0);
+  defword("if", F_IMMEDIATE, "'", "branch0", ",", "here", "lit", "0", ",",
+          "exit", 0);
   defword("then", F_IMMEDIATE, "dup", "here", "swap", "-", "swap", "!", "exit",
           0);
-  dictinternal = dictlatest;
 }
 
 int main(void) {
   struct entry *quit;
   initState();
-  assert(quit = find(dictinternal, "quit"));
+  assert(quit = find(dictlatest, "quit"));
   vm.current = quit - dict;
   vm.next = quit->def - mem;
   while (1)
