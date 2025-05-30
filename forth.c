@@ -493,6 +493,8 @@ void initdict(void) {
   defword("not", 0, "lit 0 = exit");
   defword("and", 0, "not not swap not not * exit");
   defword("or", 0, "not swap not and not exit");
+  defword("begin", F_IMMEDIATE, "here exit");
+  defword("again", F_IMMEDIATE, "' branch , here - , exit");
 }
 
 void initvm(void) {
