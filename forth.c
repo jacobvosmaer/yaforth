@@ -347,11 +347,12 @@ void branch(void) {
 
 void branch0(void) {
   int x;
-  if (stackpop(&x) && !x)
-    vm.next += mem[vm.next];
-  else
-    vm.next++;
-  next();
+  if (stackpop(&x) && !x) {
+    branch();
+  } else {
+    vm.next++; /* discard jump offset */
+    next();
+  }
 }
 
 void here(void) {
