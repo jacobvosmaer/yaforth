@@ -208,7 +208,13 @@ char *Strdup(char *s) {
   return p;
 }
 
-void docol(void);
+void docol(void) {
+  struct entry *de = dict + vm.current;
+  assert(de >= dict && de <= dictlatest);
+  rstackpush(vm.next);
+  vm.next = de->def - mem;
+  next();
+}
 
 void create_(void) {
   if (dictlatest == endof(dict) - 1) {
@@ -346,14 +352,6 @@ void fetch(void) {
     assert(addr >= 0 && addr < nelem(mem));
     stackpush(mem[addr]);
   }
-  next();
-}
-
-void docol(void) {
-  struct entry *de = dict + vm.current;
-  assert(de >= dict && de <= dictlatest);
-  rstackpush(vm.next);
-  vm.next = de->def - mem;
   next();
 }
 
