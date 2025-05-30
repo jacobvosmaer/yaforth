@@ -147,6 +147,7 @@ void stackprint(void) {
     printf(" %d", stack[i]);
   next();
 }
+
 void tor(void) {
   int x;
   if (stackpop(&x))
