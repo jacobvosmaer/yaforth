@@ -1,3 +1,6 @@
+\ This startup file gets interpreted before forth starts
+\ reading from stdin.
+
 : rot >r swap r> swap ;
 : over >r dup r> swap ;
 : cr 10 emit ;

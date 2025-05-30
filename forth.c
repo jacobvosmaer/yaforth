@@ -119,6 +119,10 @@ void gettoken(void) {
       Ungetchar(ch);
       wordbuf[n] = 0;
       return;
+    } else if (ch == '\\' && !n) {
+      while (ch = Getchar(), ch != '\n' && ch != EOF)
+        ;
+      Ungetchar(ch);
     } else if (!space(ch)) {
       wordbuf[n++] = ch;
     }
