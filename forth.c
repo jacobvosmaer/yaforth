@@ -17,15 +17,11 @@ struct entry {
   void (*func)(void);
   int flags;
   int *def;
-};
+} *dictlatest, *dictinternal, dict[1024];
 
-struct {
-  int stackp, rstackp, compiling;
-  int stack[1024], rstack[1024];
-  char word[256];
-  struct entry *latest, *internal, dict[1024];
-  char *error;
-} state;
+int compiling;
+
+int stack[1024], stackp, rstack[1024], rstackp;
 
 struct {
   int next, current;
@@ -33,11 +29,13 @@ struct {
 
 int mem[8192], nmem;
 
+char wordbuf[256], *error;
+
 void next(void) { vm.current = mem[vm.next++]; }
 
 struct entry *find(struct entry *start, char *word) {
   struct entry *de;
-  for (de = start; de >= state.dict; de--)
+  for (de = start; de >= dict; de--)
     if (!(de->flags & F_HIDDEN) && !strcmp(de->word, word))
       return de;
   return 0;
@@ -58,7 +56,7 @@ void compile(struct entry *start, char *word) {
   int x;
   struct entry *de = find(start, word);
   if (de) {
-    addhere(de - state.dict);
+    addhere(de - dict);
   } else if (asnum(word, &x)) {
     compile(start, "lit");
     addhere(x);
@@ -68,31 +66,32 @@ void compile(struct entry *start, char *word) {
 }
 
 void rstackpush(int x) {
-  assert(state.rstackp < nelem(state.rstack));
-  state.rstack[state.rstackp++] = x;
+  assert(rstackp < nelem(rstack));
+  rstack[rstackp++] = x;
 }
 
 int rstackpop(void) {
-  assert(state.rstackp > 0);
-  return state.rstack[--state.rstackp];
+  assert(rstackp > 0);
+  return rstack[--rstackp];
 }
 
 int space(int ch) { return ch == ' ' || ch == '\n'; }
+
 void gettoken(void) {
   int ch, n = 0;
-  while (n < sizeof(state.word)) {
+  while (n < sizeof(wordbuf)) {
     ch = getchar();
     if (ch == EOF) {
-      state.word[n] = 0;
+      wordbuf[n] = 0;
       return;
     } else if (space(ch) && n) {
       /* keeping ch in the input buffer allows us to discard the rest of the
        * line later if needed */
       ungetc(ch, stdin);
-      state.word[n] = 0;
+      wordbuf[n] = 0;
       return;
     } else if (!space(ch)) {
-      state.word[n++] = ch;
+      wordbuf[n++] = ch;
     }
   }
   assert(0);
@@ -105,26 +104,26 @@ void word(void) {
 
 void stackprint(void) {
   int i;
-  printf("<%d>", state.stackp);
-  for (i = 0; i < state.stackp; i++)
-    printf(" %d", state.stack[i]);
+  printf("<%d>", stackp);
+  for (i = 0; i < stackp; i++)
+    printf(" %d", stack[i]);
   next();
 }
 
 int stackpop(int *x) {
-  if (state.stackp <= 0) {
-    state.error = "stack empty";
+  if (stackp <= 0) {
+    error = "stack empty";
     return 0;
   }
-  *x = state.stack[--state.stackp];
+  *x = stack[--stackp];
   return 1;
 }
 
 void stackpush(int x) {
-  if (state.stackp < nelem(state.stack))
-    state.stack[state.stackp++] = x;
+  if (stackp < nelem(stack))
+    stack[stackp++] = x;
   else
-    state.error = "stack overflow";
+    error = "stack overflow";
 }
 
 void tor(void) {
@@ -140,7 +139,7 @@ void fromr(void) {
 }
 
 void rspstore(void) {
-  stackpop(&state.rstackp);
+  stackpop(&rstackp);
   next();
 }
 
@@ -178,7 +177,7 @@ void divi(void) {
     if (y)
       stackpush(x / y);
     else
-      state.error = "division by zero";
+      error = "division by zero";
   }
   next();
 }
@@ -193,14 +192,14 @@ void dup(void) {
 }
 
 void clr(void) {
-  state.stackp = 0;
+  stackp = 0;
   next();
 }
 
 void endcompiling(void) {
-  compile(state.internal, "exit");
-  state.latest->flags &= ~F_HIDDEN;
-  state.compiling = 0;
+  compile(dictinternal, "exit");
+  dictlatest->flags &= ~F_HIDDEN;
+  compiling = 0;
   next();
 }
 
@@ -219,15 +218,15 @@ char *Strdup(char *s) {
 void docol(void);
 
 void create_(void) {
-  if (state.latest == endof(state.dict) - 1) {
-    state.error = "no room left in dictionary";
+  if (dictlatest == endof(dict) - 1) {
+    error = "no room left in dictionary";
   } else {
-    state.latest++;
-    assert(*state.word);
-    assert(state.latest->word = Strdup(state.word));
-    state.latest->flags = 0;
-    state.latest->func = docol;
-    state.latest->def = mem + nmem;
+    dictlatest++;
+    assert(*wordbuf);
+    assert(dictlatest->word = Strdup(wordbuf));
+    dictlatest->flags = 0;
+    dictlatest->func = docol;
+    dictlatest->def = mem + nmem;
   }
 }
 
@@ -237,28 +236,28 @@ void create(void) {
 }
 
 void latest(void) {
-  stackpush(state.latest - state.dict);
+  stackpush(dictlatest - dict);
   next();
 }
 
 void hidden(void) {
   int i;
   if (stackpop(&i))
-    state.dict[i].flags ^= F_HIDDEN;
+    dict[i].flags ^= F_HIDDEN;
   next();
 }
 
 void hiddenset(void) {
   int i;
   if (stackpop(&i))
-    state.dict[i].flags |= F_HIDDEN;
+    dict[i].flags |= F_HIDDEN;
   next();
 }
 
 void hiddenclr(void) {
   int i;
   if (stackpop(&i))
-    state.dict[i].flags &= ~F_HIDDEN;
+    dict[i].flags &= ~F_HIDDEN;
   next();
 }
 
@@ -270,7 +269,7 @@ void emit(void) {
 }
 
 void immediate(void) {
-  state.latest->flags |= F_IMMEDIATE;
+  dictlatest->flags |= F_IMMEDIATE;
   next();
 }
 
@@ -289,7 +288,7 @@ void greaterthan(void) {
 }
 
 void recursive(void) {
-  state.latest->flags &= ~F_HIDDEN;
+  dictlatest->flags &= ~F_HIDDEN;
   next();
 }
 
@@ -358,8 +357,8 @@ void fetch(void) {
 }
 
 void docol(void) {
-  struct entry *de = state.dict + vm.current;
-  assert(de >= state.dict && de <= state.latest);
+  struct entry *de = dict + vm.current;
+  assert(de >= dict && de <= dictlatest);
   rstackpush(vm.next);
   vm.next = de->def - mem;
   next();
@@ -368,11 +367,11 @@ void docol(void) {
 void interpret(void) {
   int x, ch;
   struct entry *de;
-  if (gettoken(), !*state.word)
+  if (gettoken(), !*wordbuf)
     exit(0);
-  if (de = find(state.latest, state.word), de >= state.dict) {
-    int i = de - state.dict;
-    if (state.compiling && !(de->flags & F_IMMEDIATE)) {
+  if (de = find(dictlatest, wordbuf), de >= dict) {
+    int i = de - dict;
+    if (compiling && !(de->flags & F_IMMEDIATE)) {
       addhere(i);
     } else {
       /* Do not call next(), jump straight to i. Someone else will call next()
@@ -380,22 +379,22 @@ void interpret(void) {
       vm.current = i;
       return;
     }
-  } else if (asnum(state.word, &x)) {
-    if (state.compiling) {
-      compile(state.internal, "lit");
+  } else if (asnum(wordbuf, &x)) {
+    if (compiling) {
+      compile(dictinternal, "lit");
       addhere(x);
     } else {
       stackpush(x);
     }
   } else {
-    state.error = "unknown word";
+    error = "unknown word";
   }
-  if (state.error) {
-    printf("  error: %s\n", state.error);
-    if (*state.word)
-      printf("  token: %s\n", state.word);
-    state.error = 0;
-    state.compiling = 0;
+  if (error) {
+    printf("  error: %s\n", error);
+    if (*wordbuf)
+      printf("  token: %s\n", wordbuf);
+    error = 0;
+    compiling = 0;
     while (ch = getchar(), ch != '\n') /* discard rest of line */
       if (ch == EOF)
         exit(0);
@@ -409,19 +408,19 @@ void exit_(void) {
 }
 
 void lbrac(void) {
-  state.compiling = 0;
+  compiling = 0;
   next();
 }
 void rbrac(void) {
-  state.compiling = 1;
+  compiling = 1;
   next();
 }
 
 void defword(char *word, int flags, ...) {
   va_list ap;
-  struct entry *de = state.latest + 1;
+  struct entry *de = dictlatest + 1;
   char *w;
-  assert(de < endof(state.dict));
+  assert(de < endof(dict));
   assert(de->word = Strdup(word));
   de->flags = flags | F_HIDDEN;
   de->def = mem + nmem;
@@ -431,7 +430,7 @@ void defword(char *word, int flags, ...) {
     compile(de, w);
   va_end(ap);
   de->flags &= ~F_HIDDEN;
-  state.latest = de;
+  dictlatest = de;
 }
 
 void initState(void) {
@@ -472,12 +471,11 @@ void initState(void) {
       {"hiddenset", hiddenset},
       {"hiddenclr", hiddenclr},
   };
-  memset(&state, 0, sizeof(state));
-  assert(sizeof(initdict) <= sizeof(state.dict));
-  memmove(state.dict, initdict, sizeof(initdict));
-  assert(!strcmp(state.dict[0].word, "exit"));
-  assert(!strcmp(state.dict[1].word, "branch0"));
-  state.latest = state.dict + nelem(initdict) - 1;
+  assert(sizeof(initdict) <= sizeof(dict));
+  memmove(dict, initdict, sizeof(initdict));
+  assert(!strcmp(dict[0].word, "exit"));
+  assert(!strcmp(dict[1].word, "branch0"));
+  dictlatest = dict + nelem(initdict) - 1;
   defword("rot", 0, ">r", "swap", "r>", "swap", "exit", 0);
   defword("over", 0, ">r", "dup", "r>", "swap", "exit", 0);
   defword("quit", 0, "0", "rsp!", "interpret", "branch", "-2", 0);
@@ -487,16 +485,16 @@ void initState(void) {
   defword("if", F_IMMEDIATE, "1", ",", "here", "0", ",", "exit", 0);
   defword("then", F_IMMEDIATE, "dup", "here", "swap", "-", "swap", "!", "exit",
           0);
-  state.internal = state.latest;
+  dictinternal = dictlatest;
 }
 
 int main(void) {
   struct entry *quit;
   initState();
-  assert(quit = find(state.internal, "quit"));
-  vm.current = quit - state.dict;
+  assert(quit = find(dictinternal, "quit"));
+  vm.current = quit - dict;
   vm.next = quit->def - mem;
   while (1)
-    state.dict[vm.current].func();
+    dict[vm.current].func();
   return 0;
 }
