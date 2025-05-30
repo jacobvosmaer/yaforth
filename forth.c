@@ -63,6 +63,22 @@ void compile(struct entry *start, char *word) {
   }
 }
 
+int stackpop(int *x) {
+  if (stackp <= 0) {
+    error = "stack empty";
+    return 0;
+  }
+  *x = stack[--stackp];
+  return 1;
+}
+
+void stackpush(int x) {
+  if (stackp < nelem(stack))
+    stack[stackp++] = x;
+  else
+    error = "stack overflow";
+}
+
 void rstackpush(int x) {
   assert(rstackp < nelem(rstack));
   rstack[rstackp++] = x;
@@ -95,6 +111,11 @@ void gettoken(void) {
   assert(0);
 }
 
+void key(void) {
+  stackpush(getchar());
+  next();
+}
+
 void word(void) {
   gettoken();
   next();
@@ -107,23 +128,6 @@ void stackprint(void) {
     printf(" %d", stack[i]);
   next();
 }
-
-int stackpop(int *x) {
-  if (stackp <= 0) {
-    error = "stack empty";
-    return 0;
-  }
-  *x = stack[--stackp];
-  return 1;
-}
-
-void stackpush(int x) {
-  if (stackp < nelem(stack))
-    stack[stackp++] = x;
-  else
-    error = "stack overflow";
-}
-
 void tor(void) {
   int x;
   if (stackpop(&x))
@@ -478,6 +482,7 @@ void initdict(void) {
       {"hiddenset", hiddenset},
       {"hiddenclr", hiddenclr},
       {"'", tick},
+      {"key", key},
   };
   assert(sizeof(builtin) <= sizeof(dict));
   memmove(dict, builtin, sizeof(builtin));
