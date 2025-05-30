@@ -1,5 +1,4 @@
 
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -411,19 +410,24 @@ void tick(void) {
   next();
 }
 
-void defword(char *word, int flags, ...) {
-  va_list ap;
+void defword(char *word, int flags, char *def) {
   struct entry *de = dictlatest + 1;
-  char *w;
   assert(de < endof(dict));
   assert(de->word = Strdup(word));
   de->flags = flags | F_HIDDEN;
   de->def = mem + nmem;
   de->func = docol;
-  va_start(ap, flags);
-  while (w = va_arg(ap, char *), w)
-    compile(de, w);
-  va_end(ap);
+  while (*def) {
+    char *p = wordbuf;
+    while (space(*def))
+      def++;
+    while (*def && !space(*def))
+      if (p < endof(wordbuf))
+        *p++ = *def++;
+    assert(p < endof(wordbuf));
+    *p = 0;
+    compile(de, wordbuf);
+  }
   de->flags &= ~F_HIDDEN;
   dictlatest = de;
 }
@@ -470,17 +474,14 @@ void initState(void) {
   assert(sizeof(initdict) <= sizeof(dict));
   memmove(dict, initdict, sizeof(initdict));
   dictlatest = dict + nelem(initdict) - 1;
-  defword("rot", 0, ">r", "swap", "r>", "swap", "exit", 0);
-  defword("over", 0, ">r", "dup", "r>", "swap", "exit", 0);
-  defword("quit", 0, "lit", "0", "rsp!", "interpret", "branch", "-2", 0);
-  defword("cr", 0, "lit", "10", "emit", "exit", 0);
-  defword(":", 0, "word", "create", "latest", "hiddenset", "]", "exit", 0);
-  defword(";", F_IMMEDIATE, "'", "exit", ",", "latest", "hiddenclr", "[",
-          "exit", 0);
-  defword("if", F_IMMEDIATE, "'", "branch0", ",", "here", "lit", "0", ",",
-          "exit", 0);
-  defword("then", F_IMMEDIATE, "dup", "here", "swap", "-", "swap", "!", "exit",
-          0);
+  defword("rot", 0, ">r swap r> swap exit");
+  defword("over", 0, ">r dup r> swap exit");
+  defword("quit", 0, "lit 0 rsp! interpret branch -2");
+  defword("cr", 0, "lit 10 emit exit");
+  defword(":", 0, "word create latest hiddenset ] exit");
+  defword(";", F_IMMEDIATE, "' exit , latest hiddenclr [ exit");
+  defword("if", F_IMMEDIATE, "' branch0 , here lit 0 , exit");
+  defword("then", F_IMMEDIATE, "dup here swap - swap ! exit");
 }
 
 int main(void) {
