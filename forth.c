@@ -284,6 +284,13 @@ void greaterthan(void) {
   next();
 }
 
+void lessthan(void) {
+  int x, y;
+  if (stackpop(&y) && stackpop(&x))
+    stackpush(x < y);
+  next();
+}
+
 void recursive(void) {
   dictlatest->flags &= ~F_HIDDEN;
   next();
@@ -432,8 +439,8 @@ void defword(char *word, int flags, char *def) {
   dictlatest = de;
 }
 
-void initState(void) {
-  struct entry initdict[] = {
+void initdict(void) {
+  struct entry builtin[] = {
       {"exit", exit_},
       {"branch0", branch0},
       {".", print},
@@ -447,6 +454,7 @@ void initState(void) {
       {"immediate", immediate, F_IMMEDIATE},
       {"=", equal},
       {">", greaterthan},
+      {"<", lessthan},
       {"recursive", recursive, F_IMMEDIATE},
       {"swap", swap},
       {"drop", drop},
@@ -471,9 +479,9 @@ void initState(void) {
       {"hiddenclr", hiddenclr},
       {"'", tick},
   };
-  assert(sizeof(initdict) <= sizeof(dict));
-  memmove(dict, initdict, sizeof(initdict));
-  dictlatest = dict + nelem(initdict) - 1;
+  assert(sizeof(builtin) <= sizeof(dict));
+  memmove(dict, builtin, sizeof(builtin));
+  dictlatest = dict + nelem(builtin) - 1;
   defword("rot", 0, ">r swap r> swap exit");
   defword("over", 0, ">r dup r> swap exit");
   defword("quit", 0, "lit 0 rsp! interpret branch -2");
@@ -482,14 +490,21 @@ void initState(void) {
   defword(";", F_IMMEDIATE, "' exit , latest hiddenclr [ exit");
   defword("if", F_IMMEDIATE, "' branch0 , here lit 0 , exit");
   defword("then", F_IMMEDIATE, "dup here swap - swap ! exit");
+  defword("not", 0, "lit 0 = exit");
+  defword("and", 0, "not not swap not not * exit");
+  defword("or", 0, "not swap not and not exit");
 }
 
-int main(void) {
+void initvm(void) {
   struct entry *quit;
-  initState();
   assert(quit = find(dictlatest, "quit"));
   vm.current = quit - dict;
   vm.next = quit->def - mem;
+}
+
+int main(void) {
+  initdict();
+  initvm();
   while (1)
     dict[vm.current].func();
   return 0;
