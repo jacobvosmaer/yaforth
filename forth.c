@@ -58,7 +58,6 @@ void compile(struct entry *start, char *word) {
   if (de) {
     addhere(de - dict);
   } else if (asnum(word, &x)) {
-    compile(start, "lit");
     addhere(x);
   } else {
     assert(0);
@@ -312,8 +311,7 @@ void lit(void) {
 }
 
 void branch(void) {
-  vm.next++;
-  vm.next += mem[vm.next] - 1;
+  vm.next += mem[vm.next];
   next();
 }
 
@@ -469,11 +467,13 @@ void initState(void) {
   dictlatest = dict + nelem(initdict) - 1;
   defword("rot", 0, ">r", "swap", "r>", "swap", "exit", 0);
   defword("over", 0, ">r", "dup", "r>", "swap", "exit", 0);
-  defword("quit", 0, "0", "rsp!", "interpret", "branch", "-2", 0);
-  defword("cr", 0, "10", "emit", "exit", 0);
+  defword("quit", 0, "lit", "0", "rsp!", "interpret", "branch", "-2", 0);
+  defword("cr", 0, "lit", "10", "emit", "exit", 0);
   defword(":", 0, "word", "create", "latest", "hiddenset", "]", "exit", 0);
-  defword(";", F_IMMEDIATE, "0", ",", "latest", "hiddenclr", "[", "exit", 0);
-  defword("if", F_IMMEDIATE, "1", ",", "here", "0", ",", "exit", 0);
+  defword(";", F_IMMEDIATE, "lit", "0", ",", "latest", "hiddenclr", "[", "exit",
+          0);
+  defword("if", F_IMMEDIATE, "lit", "1", ",", "here", "lit", "0", ",", "exit",
+          0);
   defword("then", F_IMMEDIATE, "dup", "here", "swap", "-", "swap", "!", "exit",
           0);
   dictinternal = dictlatest;
