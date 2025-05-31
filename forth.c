@@ -174,6 +174,16 @@ void print(void) {
   next();
 }
 
+#define defval(name, val)                                                      \
+  void name(void) {                                                            \
+    stackpush(val);                                                            \
+    next();                                                                    \
+  }
+
+defval(latest, dictlatest - dict)
+defval(here, nmem)
+defval(state, compiling)
+
 #define defbinary(name, op)                                                    \
   void name(void) {                                                            \
     int x, y;                                                                  \
@@ -251,11 +261,6 @@ void create(void) {
   next();
 }
 
-void latest(void) {
-  stackpush(dictlatest - dict);
-  next();
-}
-
 void hidden(void) {
   int i;
   if (stackpop(&i))
@@ -327,11 +332,6 @@ void branch0(void) {
     vm.next++; /* discard jump offset */
     next();
   }
-}
-
-void here(void) {
-  stackpush(nmem);
-  next();
 }
 
 void comma(void) {
@@ -415,12 +415,6 @@ void tick(void) {
   stackpush(mem[vm.next++]);
   next();
 }
-
-void state(void) {
-  stackpush(compiling);
-  next();
-}
-
 void defword(char *word, int flags, char *def) {
   struct entry *de = dictlatest + 1;
   assert(de < endof(dict));
