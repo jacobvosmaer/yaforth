@@ -416,6 +416,11 @@ void tick(void) {
   next();
 }
 
+void state(void) {
+  stackpush(compiling);
+  next();
+}
+
 void defword(char *word, int flags, char *def) {
   struct entry *de = dictlatest + 1;
   assert(de < endof(dict));
@@ -483,6 +488,7 @@ void initdict(void) {
       {"hiddenclr", hiddenclr},
       {"'", tick},
       {"key", key},
+      {"state", state},
   };
   assert(nelem(builtin) <= nelem(dict));
   for (i = 0; i < nelem(builtin); i++) {
