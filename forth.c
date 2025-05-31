@@ -14,7 +14,7 @@
 enum { F_IMMEDIATE = 1 << 0, F_HIDDEN = 1 << 1 };
 
 struct entry {
-  char *word;
+  int *word;
   void (*func)(void);
   int flags;
   int *def;
@@ -36,8 +36,10 @@ void next(void) { vm.current = mem[vm.next++]; }
 
 struct entry *find(struct entry *start, char *word) {
   struct entry *de;
+  int n = strlen(word);
   for (de = start; de >= dict; de--)
-    if (!(de->flags & F_HIDDEN) && !strcmp(de->word, word))
+    if (!(de->flags & F_HIDDEN) && n == *de->word &&
+        !memcmp(word, de->word + 1, n))
       return de;
   return 0;
 }
@@ -218,16 +220,15 @@ void clr(void) {
   next();
 }
 
-char *Strdup(char *s) {
-  char *p = (char *)(mem + nmem);
-  int len = strlen(s), mask = sizeof(*mem) - 1,
-      nints = ((len + 1 + mask) & ~mask) / sizeof(*mem);
+int *Strdup(char *s) {
+  int *w = mem + nmem, len = strlen(s), mask = sizeof(*mem) - 1,
+      nints = 1 + ((len + mask) & ~mask) / sizeof(*mem);
   if ((nelem(mem) - nmem) < nints)
     return 0;
-  memmove(p, s, len);
-  memset(p + len, 0, nints * sizeof(int) - len);
+  mem[nmem] = len;
+  memmove(mem + nmem + 1, s, len);
   nmem += nints;
-  return p;
+  return w;
 }
 
 void docol(void) {
@@ -465,7 +466,12 @@ void defword(char *word, int flags, char *def) {
 }
 
 void initdict(void) {
-  struct entry builtin[] = {
+  int i;
+  struct {
+    char *word;
+    void (*func)(void);
+    int flags;
+  } builtin[] = {
       {"exit", exit_},
       {"branch0", branch0},
       {".", print},
@@ -505,9 +511,13 @@ void initdict(void) {
       {"'", tick},
       {"key", key},
   };
-  assert(sizeof(builtin) <= sizeof(dict));
-  memmove(dict, builtin, sizeof(builtin));
-  dictlatest = dict + nelem(builtin) - 1;
+  assert(nelem(builtin) <= nelem(dict));
+  for (i = 0; i < nelem(builtin); i++) {
+    assert(dict[i].word = Strdup(builtin[i].word));
+    dict[i].func = builtin[i].func;
+    dict[i].flags = builtin[i].flags;
+  }
+  dictlatest = dict + i - 1;
   defword("quit", 0, "lit 0 rsp! interpret branch -2");
   defword(":", 0, "word create latest hiddenset ] exit");
   defword(";", F_IMMEDIATE, "' exit , latest hiddenclr [ exit");
