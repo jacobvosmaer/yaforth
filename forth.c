@@ -174,26 +174,20 @@ void print(void) {
   next();
 }
 
-void add(void) {
-  int x, y;
-  if (stackpop(&y) && stackpop(&x))
-    stackpush(x + y);
-  next();
-}
+#define defbinary(name, op)                                                    \
+  void name(void) {                                                            \
+    int x, y;                                                                  \
+    if (stackpop(&y) && stackpop(&x))                                          \
+      stackpush(op);                                                           \
+    next();                                                                    \
+  }
 
-void sub(void) {
-  int x, y;
-  if (stackpop(&y) && stackpop(&x))
-    stackpush(x - y);
-  next();
-}
-
-void mul(void) {
-  int x, y;
-  if (stackpop(&y) && stackpop(&x))
-    stackpush(x * y);
-  next();
-}
+defbinary(add, x + y)
+defbinary(sub, x - y)
+defbinary(mul, x *y)
+defbinary(equal, x == y)
+defbinary(greaterthan, x > y)
+defbinary(lessthan, x < y)
 
 void divi(void) {
   int x, y;
@@ -292,27 +286,6 @@ void emit(void) {
 
 void immediate(void) {
   dictlatest->flags |= F_IMMEDIATE;
-  next();
-}
-
-void equal(void) {
-  int x, y;
-  if (stackpop(&y) && stackpop(&x))
-    stackpush(x == y);
-  next();
-}
-
-void greaterthan(void) {
-  int x, y;
-  if (stackpop(&y) && stackpop(&x))
-    stackpush(x > y);
-  next();
-}
-
-void lessthan(void) {
-  int x, y;
-  if (stackpop(&y) && stackpop(&x))
-    stackpush(x < y);
   next();
 }
 
