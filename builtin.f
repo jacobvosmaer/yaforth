@@ -18,3 +18,4 @@
   key drop \ skip exactly 1 blank after first quote
   begin key dup dup 34 <> swap -1 > and while emit repeat drop
 ;
+: else immediate ' branch , here 0 , swap dup here swap - swap ! ;

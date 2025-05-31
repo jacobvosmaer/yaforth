@@ -1,0 +1,2 @@
+: testelse if 1 . else 2 . then cr ;
+1 testelse 0 testelse
