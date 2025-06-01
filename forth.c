@@ -49,6 +49,8 @@ int *intaddr(int addr) {
   return (int *)(mem + addr);
 }
 
+char *wordaddr(int addr) { return (char *)(mem + addr + sizeof(int)); }
+
 char wordbuf[256], *error;
 
 void next(void) { vm.current = *intaddr(intpp(&vm.next)); }
@@ -58,7 +60,7 @@ struct entry *find(struct entry *start, char *word) {
   int n = strlen(word);
   for (de = start; de >= dict; de--)
     if (!(de->flags & F_HIDDEN) && n == *intaddr(de->word) &&
-        !memcmp(word, mem + de->word + sizeof(int), n))
+        !memcmp(word, wordaddr(de->word), n))
       return de;
   return 0;
 }
@@ -245,7 +247,7 @@ int Strdup(char *s) {
       totallen = sizeof(int) + ((len + mask) & ~mask);
   assert(totallen <= memsize - nmem);
   *intaddr(nmem) = len;
-  memmove(mem + w + sizeof(int), s, len);
+  memmove(wordaddr(w), s, len);
   nmem += totallen;
   return w;
 }
