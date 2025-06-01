@@ -452,6 +452,7 @@ void defword(char *word, int flags, char *def) {
 
 void initdict(void) {
   int i;
+  char quitbuf[40];
   struct {
     char *word;
     void (*func)(void);
@@ -504,7 +505,9 @@ void initdict(void) {
     dict[i].flags = builtin[i].flags;
   }
   dictlatest = dict + i - 1;
-  defword("quit", 0, "lit 0 rsp! interpret branch -8");
+  assert(snprintf(quitbuf, sizeof(quitbuf), "lit 0 rsp! interpret branch %d",
+                  -2 * (int)sizeof(int)) < sizeof(quitbuf));
+  defword("quit", 0, quitbuf);
   defword(":", 0, "word create latest hiddenset ] exit");
   defword(";", F_IMMEDIATE, "' exit , latest hiddenclr [ exit");
 }
