@@ -14,10 +14,10 @@
 enum { F_IMMEDIATE = 1 << 0, F_HIDDEN = 1 << 1 };
 
 struct entry {
-  int *word;
+  int word;
   void (*func)(void);
   int flags;
-  int *def;
+  int def;
 } *dictlatest, dict[1024];
 
 int compiling;
@@ -28,26 +28,42 @@ struct {
   int next, current;
 } vm;
 
-int mem[8192], nmem;
+#define memsize 32768
+union {
+  int memint[memsize / sizeof(int)];
+  unsigned char memchar[memsize];
+} mem_;
+
+unsigned char *mem = mem_.memchar;
+int nmem;
+
+int intpp(int *x) {
+  int old = *x;
+  *x += sizeof(int);
+  return old;
+}
+
+int *intaddr(int addr) {
+  assert(!(addr & (sizeof(int) - 1)));
+  assert(addr >= 0 && addr < memsize);
+  return (int *)(mem + addr);
+}
 
 char wordbuf[256], *error;
 
-void next(void) { vm.current = mem[vm.next++]; }
+void next(void) { vm.current = *intaddr(intpp(&vm.next)); }
 
 struct entry *find(struct entry *start, char *word) {
   struct entry *de;
   int n = strlen(word);
   for (de = start; de >= dict; de--)
-    if (!(de->flags & F_HIDDEN) && n == *de->word &&
-        !memcmp(word, de->word + 1, n))
+    if (!(de->flags & F_HIDDEN) && n == *intaddr(de->word) &&
+        !memcmp(word, mem + de->word + sizeof(int), n))
       return de;
   return 0;
 }
 
-void addhere(int x) {
-  assert(nmem < nelem(mem));
-  mem[nmem++] = x;
-}
+void addhere(int x) { *intaddr(intpp(&nmem)) = x; }
 
 int asnum(char *token, int *out) {
   char *end = 0;
@@ -224,14 +240,13 @@ void clr(void) {
   next();
 }
 
-int *Strdup(char *s) {
-  int *w = mem + nmem, len = strlen(s), mask = sizeof(*mem) - 1,
-      nints = 1 + ((len + mask) & ~mask) / sizeof(*mem);
-  if ((nelem(mem) - nmem) < nints)
-    return 0;
-  mem[nmem] = len;
-  memmove(mem + nmem + 1, s, len);
-  nmem += nints;
+int Strdup(char *s) {
+  int w = nmem, len = strlen(s), mask = sizeof(int) - 1,
+      totallen = sizeof(int) + ((len + mask) & ~mask);
+  assert(totallen <= memsize - nmem);
+  *intaddr(nmem) = len;
+  memmove(mem + w + sizeof(int), s, len);
+  nmem += totallen;
   return w;
 }
 
@@ -239,7 +254,7 @@ void docol(void) {
   struct entry *de = dict + vm.current;
   assert(de >= dict && de <= dictlatest);
   rstackpush(vm.next);
-  vm.next = de->def - mem;
+  vm.next = de->def;
   next();
 }
 
@@ -249,10 +264,10 @@ void create_(void) {
   } else {
     dictlatest++;
     assert(*wordbuf);
-    assert(dictlatest->word = Strdup(wordbuf));
+    dictlatest->word = Strdup(wordbuf);
     dictlatest->flags = 0;
     dictlatest->func = docol;
-    dictlatest->def = mem + nmem;
+    dictlatest->def = nmem;
   }
 }
 
@@ -315,12 +330,12 @@ void drop(void) {
 }
 
 void lit(void) {
-  stackpush(mem[vm.next++]);
+  stackpush(*intaddr(intpp(&vm.next)));
   next();
 }
 
 void branch(void) {
-  vm.next += mem[vm.next];
+  vm.next += *intaddr(vm.next);
   next();
 }
 
@@ -329,32 +344,27 @@ void branch0(void) {
   if (stackpop(&x) && !x) {
     branch();
   } else {
-    vm.next++; /* discard jump offset */
+    intpp(&vm.next); /* discard jump offset */
     next();
   }
 }
 
 void comma(void) {
-  assert(nmem < nelem(mem));
-  stackpop(mem + nmem++);
+  stackpop(intaddr(intpp(&nmem)));
   next();
 }
 
 void store(void) {
-  int addr, x;
-  if (stackpop(&addr) && stackpop(&x)) {
-    assert(addr >= 0 && addr < nelem(mem));
-    mem[addr] = x;
-  }
+  int addr;
+  if (stackpop(&addr))
+    stackpop(intaddr(addr));
   next();
 }
 
 void fetch(void) {
   int addr;
-  if (stackpop(&addr)) {
-    assert(addr >= 0 && addr < nelem(mem));
-    stackpush(mem[addr]);
-  }
+  if (stackpop(&addr))
+    stackpush(*intaddr(addr));
   next();
 }
 
@@ -412,15 +422,16 @@ void rbrac(void) {
 }
 
 void tick(void) {
-  stackpush(mem[vm.next++]);
+  stackpush(*intaddr(intpp(&vm.next)));
   next();
 }
+
 void defword(char *word, int flags, char *def) {
   struct entry *de = dictlatest + 1;
   assert(de < endof(dict));
-  assert(de->word = Strdup(word));
+  de->word = Strdup(word);
   de->flags = flags | F_HIDDEN;
-  de->def = mem + nmem;
+  de->def = nmem;
   de->func = docol;
   while (*def) {
     char *p = wordbuf;
@@ -486,12 +497,12 @@ void initdict(void) {
   };
   assert(nelem(builtin) <= nelem(dict));
   for (i = 0; i < nelem(builtin); i++) {
-    assert(dict[i].word = Strdup(builtin[i].word));
+    dict[i].word = Strdup(builtin[i].word);
     dict[i].func = builtin[i].func;
     dict[i].flags = builtin[i].flags;
   }
   dictlatest = dict + i - 1;
-  defword("quit", 0, "lit 0 rsp! interpret branch -2");
+  defword("quit", 0, "lit 0 rsp! interpret branch -8");
   defword(":", 0, "word create latest hiddenset ] exit");
   defword(";", F_IMMEDIATE, "' exit , latest hiddenclr [ exit");
 }
