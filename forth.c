@@ -30,7 +30,7 @@ struct {
 
 #define memsize 32768
 union {
-  int memint[memsize / sizeof(int)];
+  int alignint;
   unsigned char memchar[memsize];
 } mem_;
 
