@@ -1,4 +1,5 @@
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -242,9 +243,20 @@ void clr(void) {
   next();
 }
 
+int alignint(int x) {
+  int mask = sizeof(int) - 1;
+  assert(x < INT_MAX - mask);
+  return (x + mask) & ~mask;
+}
+
+void alignhere(void) {
+  nmem = alignint(nmem);
+  assert(nmem <= memsize);
+  next();
+}
+
 int Strdup(char *s) {
-  int w = nmem, len = strlen(s), mask = sizeof(int) - 1,
-      totallen = sizeof(int) + ((len + mask) & ~mask);
+  int w = nmem, len = strlen(s), totallen = alignint(sizeof(int) + len);
   assert(totallen <= memsize - nmem);
   *intaddr(nmem) = len;
   memmove(wordaddr(w), s, len);
@@ -356,6 +368,14 @@ void comma(void) {
   next();
 }
 
+void charcomma(void) {
+  int x;
+  stackpop(&x);
+  assert(nmem < memsize);
+  mem[nmem++] = x;
+  next();
+}
+
 void store(void) {
   int addr;
   if (stackpop(&addr))
@@ -428,6 +448,33 @@ void tick(void) {
   next();
 }
 
+void tell(void) {
+  int addr;
+  if (stackpop(&addr))
+    fwrite(wordaddr(addr), 1, *intaddr(addr), stdout);
+  next();
+}
+
+void litstring(void) {
+  int addr = intpp(&vm.next), len;
+  assert(addr >= 0 && addr < memsize);
+  len = mem[addr];
+  assert(len >= 0 && len < memsize - vm.next);
+  stackpush(addr);
+  vm.next += alignint(len);
+  next();
+}
+
+void dumplatest(void) {
+  struct entry *de = dictlatest;
+  int x = de->def, i, wrap = 16;
+  for (i = 0; x < nmem; i++, x++)
+    printf("%s%02x%s", ((i % wrap) ? " " : ""), mem[x],
+           ((i % wrap) == wrap - 1 ? "\n" : ""));
+  putchar('\n');
+  next();
+}
+
 void defword(char *word, int flags, char *def) {
   struct entry *de = dictlatest + 1;
   assert(de < endof(dict));
@@ -497,6 +544,11 @@ void initdict(void) {
       {"'", tick},
       {"key", key},
       {"state", state},
+      {"litstring", litstring},
+      {"tell", tell},
+      {"c,", charcomma},
+      {"alignhere", alignhere},
+      {"dumplatest", dumplatest},
   };
   assert(nelem(builtin) <= nelem(dict));
   for (i = 0; i < nelem(builtin); i++) {

@@ -3,4 +3,6 @@
 "
 ."  x
 "
-.s
+: HELLO ." HELLO WORLD!" cr ;
+HELLO
+.s cr
