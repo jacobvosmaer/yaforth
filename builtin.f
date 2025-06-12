@@ -33,3 +33,4 @@
     begin key dup dup 34 <> swap -1 > and while emit repeat drop
   then
 ;
+: ( immediate begin key dup 41 <> swap -1 > and while repeat ;
