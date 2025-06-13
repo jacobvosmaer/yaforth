@@ -249,9 +249,12 @@ int alignint(int x) {
   return (x + mask) & ~mask;
 }
 
-void alignhere(void) {
-  *nmem = alignint(*nmem);
-  assert(*nmem <= memsize);
+void align(void) {
+  int x;
+  if (stackpop(&x)) {
+    x = alignint(x);
+    stackpush(x);
+  }
   next();
 }
 
@@ -547,7 +550,7 @@ void initdict(void) {
       {"litstring", litstring},
       {"tell", tell},
       {"c,", charcomma},
-      {"alignhere", alignhere},
+      {"align", align},
       {"dumplatest", dumplatest},
   };
   assert(nelem(builtin) <= nelem(dict));

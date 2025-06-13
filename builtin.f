@@ -27,7 +27,7 @@
     key drop \ skip leading space
     begin key dup dup 34 <> swap -1 > and while c, repeat drop
     here @ swap - swap ! \ update string length
-    alignhere ' tell ,
+    here @ align here ! ' tell ,
   else
     key drop \ skip exactly 1 blank after first quote
     begin key dup dup 34 <> swap -1 > and while emit repeat drop
