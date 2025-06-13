@@ -36,7 +36,7 @@ union {
 } mem_;
 
 unsigned char *mem = mem_.memchar;
-int nmem;
+int *nmem = &mem_.alignint;
 
 int intpp(int *x) {
   int old = *x;
@@ -66,7 +66,7 @@ struct entry *find(struct entry *start, char *word) {
   return 0;
 }
 
-void addhere(int x) { *intaddr(intpp(&nmem)) = x; }
+void addhere(int x) { *intaddr(intpp(nmem)) = x; }
 
 int asnum(char *token, int *out) {
   char *end = 0;
@@ -200,7 +200,7 @@ void print(void) {
   }
 
 defval(latest, dictlatest - dict)
-defval(here, nmem)
+defval(here, (unsigned char *)nmem - mem)
 defval(state, compiling)
 
 #define defbinary(name, op)                                                    \
@@ -250,17 +250,17 @@ int alignint(int x) {
 }
 
 void alignhere(void) {
-  nmem = alignint(nmem);
-  assert(nmem <= memsize);
+  *nmem = alignint(*nmem);
+  assert(*nmem <= memsize);
   next();
 }
 
 int Strdup(char *s) {
-  int w = nmem, len = strlen(s), totallen = alignint(sizeof(int) + len);
-  assert(totallen <= memsize - nmem);
-  *intaddr(nmem) = len;
+  int w = *nmem, len = strlen(s), totallen = alignint(sizeof(int) + len);
+  assert(totallen <= memsize - *nmem);
+  *intaddr(*nmem) = len;
   memmove(wordaddr(w), s, len);
-  nmem += totallen;
+  *nmem += totallen;
   return w;
 }
 
@@ -281,7 +281,7 @@ void create_(void) {
     dictlatest->word = Strdup(wordbuf);
     dictlatest->flags = 0;
     dictlatest->func = docol;
-    dictlatest->def = nmem;
+    dictlatest->def = *nmem;
   }
 }
 
@@ -364,15 +364,15 @@ void branch0(void) {
 }
 
 void comma(void) {
-  stackpop(intaddr(intpp(&nmem)));
+  stackpop(intaddr(intpp(nmem)));
   next();
 }
 
 void charcomma(void) {
   int x;
   stackpop(&x);
-  assert(nmem < memsize);
-  mem[nmem++] = x;
+  assert(*nmem < memsize);
+  mem[(*nmem)++] = x;
   next();
 }
 
@@ -468,7 +468,7 @@ void litstring(void) {
 void dumplatest(void) {
   struct entry *de = dictlatest;
   int x = de->def, i, wrap = 16;
-  for (i = 0; x < nmem; i++, x++)
+  for (i = 0; x < *nmem; i++, x++)
     printf("%s%02x%s", ((i % wrap) ? " " : ""), mem[x],
            ((i % wrap) == wrap - 1 ? "\n" : ""));
   putchar('\n');
@@ -480,7 +480,7 @@ void defword(char *word, int flags, char *def) {
   assert(de < endof(dict));
   de->word = Strdup(word);
   de->flags = flags | F_HIDDEN;
-  de->def = nmem;
+  de->def = *nmem;
   de->func = docol;
   while (*def) {
     char *p = wordbuf;
@@ -565,6 +565,8 @@ void initdict(void) {
 }
 
 int main(void) {
+  intpp(nmem); /* nmem points to mem[0]. advance nmem so that it does not get
+                  overwritten itself. */
   initdict();
   vm.current = find(dictlatest, "quit") - dict;
   while (1)

@@ -1,14 +1,14 @@
 \ This startup file gets interpreted before forth starts
 \ reading from stdin.
 
-: if immediate ' branch0 , here 0 , ;
-: else immediate ' branch , here 0 , swap dup here swap - swap ! ;
-: then immediate dup here swap - swap ! ;
+: if immediate ' branch0 , here @ 0 , ;
+: else immediate ' branch , here @ 0 , swap dup here @ swap - swap ! ;
+: then immediate dup here @ swap - swap ! ;
 
-: begin immediate here ;
-: again immediate ' branch , here - , ;
-: while immediate ' branch0 , here 0 , ;
-: repeat immediate ' branch , swap here - , dup here swap - swap ! ;
+: begin immediate here @ ;
+: again immediate ' branch , here @ - , ;
+: while immediate ' branch0 , here @ 0 , ;
+: repeat immediate ' branch , swap here @ - , dup here @ swap - swap ! ;
 
 : rot >r swap r> swap ;
 : over >r dup r> swap ;
@@ -22,11 +22,11 @@
 : ." immediate
   state if
     ' litstring ,
-    here 0 , \ reserve space for length
-    here \ start of string data
+    here @ 0 , \ reserve space for length
+    here @ \ start of string data
     key drop \ skip leading space
     begin key dup dup 34 <> swap -1 > and while c, repeat drop
-    here swap - swap ! \ update string length
+    here @ swap - swap ! \ update string length
     alignhere ' tell ,
   else
     key drop \ skip exactly 1 blank after first quote
