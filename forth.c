@@ -249,7 +249,7 @@ int alignint(int x) {
   return (x + mask) & ~mask;
 }
 
-void align(void) {
+void aligned(void) {
   int x;
   if (stackpop(&x)) {
     x = alignint(x);
@@ -550,7 +550,7 @@ void initdict(void) {
       {"litstring", litstring},
       {"tell", tell},
       {"c,", charcomma},
-      {"align", align},
+      {"aligned", aligned},
       {"dumplatest", dumplatest},
   };
   assert(nelem(builtin) <= nelem(dict));

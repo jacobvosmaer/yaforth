@@ -18,6 +18,7 @@
 : and not not swap not not * ;
 : or not swap not and not ;
 
+: align here @ aligned here ! ;
 : cr 10 emit ;
 : ." immediate
   state if
