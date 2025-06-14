@@ -19,19 +19,22 @@
 : or not swap not and not ;
 
 : align here @ aligned here ! ;
-: cr 10 emit ;
+: '\n' 10 ;
+: '"' 34 ;
+: ')' 41 ;
+: cr '\n' emit ;
 : ." immediate
   state if
     ' litstring ,
     here @ 0 , \ reserve space for length
     here @ \ start of string data
     key drop \ skip leading space
-    begin key dup dup 34 <> swap -1 > and while c, repeat drop
+    begin key dup dup '"' <> swap -1 > and while c, repeat drop
     here @ swap - swap ! \ update string length
     here @ align here ! ' tell ,
   else
     key drop \ skip exactly 1 blank after first quote
-    begin key dup dup 34 <> swap -1 > and while emit repeat drop
+    begin key dup dup '"' <> swap -1 > and while emit repeat drop
   then
 ;
-: ( immediate begin key dup 41 <> swap -1 > and while repeat ;
+: ( immediate begin key dup ')' <> swap -1 > and while repeat ;
