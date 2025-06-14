@@ -35,6 +35,9 @@ union {
 } mem_;
 
 unsigned char *mem = mem_.memchar;
+/* Store nmem at logical addres 0. This prevents the first dictionary entry from
+ * being stored, allowing us to use 0 as a sentinel for the dictionary linked
+ * list. */
 int *nmem = &mem_.alignint;
 
 #define memoff(de) ((unsigned char *)(de) - mem)
@@ -588,7 +591,7 @@ void initdict(void) {
 }
 
 int main(void) {
-  intpp(nmem); /* nmem points to mem[0]. advance nmem so that it does not get
+  intpp(nmem); /* nmem points to mem[0]. Advance nmem so that it does not get
                   overwritten itself. */
   initdict();
   vm.current = memoff(find(dictlatest, "quit"));
