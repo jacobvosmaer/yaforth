@@ -19,9 +19,10 @@
 : or not swap not and not ;
 
 : align here @ aligned here ! ;
-: '\n' 10 ;
-: '"' 34 ;
-: ')' 41 ;
+: constant word create ' lit , , ' exit , ;
+10 constant '\n'
+34 constant '"'
+41 constant ')'
 : cr '\n' emit ;
 : ." immediate
   state if
