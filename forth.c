@@ -15,11 +15,9 @@
 enum { F_IMMEDIATE = 1 << 0, F_HIDDEN = 1 << 1 };
 
 struct entry {
-  int word;
   void (*func)(void);
-  int flags;
-  int def;
-} *dictlatest, dict[1024];
+  int word, flags, def, next;
+} *dictlatest;
 
 int compiling;
 
@@ -32,11 +30,14 @@ struct {
 #define memsize 32768
 union {
   int alignint;
+  struct entry alignentry;
   unsigned char memchar[memsize];
 } mem_;
 
 unsigned char *mem = mem_.memchar;
 int *nmem = &mem_.alignint;
+
+#define memoff(de) ((unsigned char *)(de) - mem)
 
 int intpp(int *x) {
   int old = *x;
@@ -50,6 +51,18 @@ int *intaddr(int addr) {
   return (int *)(mem + addr);
 }
 
+int alignentry(int x) {
+  int mask = sizeof(struct entry) - 1;
+  assert(x < INT_MAX - mask);
+  return (x + mask) & ~mask;
+}
+
+struct entry *entryaddr(int addr) {
+  assert(!(addr & (sizeof(struct entry) - 1)));
+  assert(addr >= 0 && addr < memsize);
+  return (struct entry *)(mem + addr);
+}
+
 char *wordaddr(int addr) { return (char *)(mem + addr + sizeof(int)); }
 
 char wordbuf[256], *error;
@@ -59,7 +72,7 @@ void next(void) { vm.current = *intaddr(intpp(&vm.next)); }
 struct entry *find(struct entry *start, char *word) {
   struct entry *de;
   int n = strlen(word);
-  for (de = start; de >= dict; de--)
+  for (de = start; memoff(de); de = entryaddr(de->next))
     if (!(de->flags & F_HIDDEN) && n == *intaddr(de->word) &&
         !memcmp(word, wordaddr(de->word), n))
       return de;
@@ -78,7 +91,7 @@ void compile(struct entry *start, char *word) {
   int x;
   struct entry *de = find(start, word);
   if (de) {
-    addhere(de - dict);
+    addhere(memoff(de));
   } else if (asnum(word, &x)) {
     addhere(x);
   } else {
@@ -199,8 +212,8 @@ void print(void) {
     next();                                                                    \
   }
 
-defval(latest, dictlatest - dict)
-defval(here, (unsigned char *)nmem - mem)
+defval(latest, memoff(dictlatest))
+defval(here, memoff(nmem))
 defval(state, compiling)
 
 #define defbinary(name, op)                                                    \
@@ -268,24 +281,30 @@ int Strdup(char *s) {
 }
 
 void docol(void) {
-  struct entry *de = dict + vm.current;
-  assert(de >= dict && de <= dictlatest);
   rstackpush(vm.next);
-  vm.next = de->def;
+  vm.next = entryaddr(vm.current)->def;
   next();
 }
 
+struct entry *addentry(void) {
+  struct entry *de;
+  int size = alignint(sizeof(*de));
+  *nmem = alignentry(*nmem);
+  de = entryaddr(*nmem);
+  assert(size <= memsize - *nmem);
+  *nmem += size;
+  return de;
+}
+
 void create_(void) {
-  if (dictlatest == endof(dict) - 1) {
-    error = "no room left in dictionary";
-  } else {
-    dictlatest++;
-    assert(*wordbuf);
-    dictlatest->word = Strdup(wordbuf);
-    dictlatest->flags = 0;
-    dictlatest->func = docol;
-    dictlatest->def = *nmem;
-  }
+  struct entry *de = addentry();
+  assert(*wordbuf);
+  de->word = Strdup(wordbuf);
+  de->flags = 0;
+  de->func = docol;
+  de->def = *nmem;
+  de->next = memoff(dictlatest);
+  dictlatest = de;
 }
 
 void create(void) {
@@ -296,21 +315,21 @@ void create(void) {
 void hidden(void) {
   int i;
   if (stackpop(&i))
-    dict[i].flags ^= F_HIDDEN;
+    entryaddr(i)->flags ^= F_HIDDEN;
   next();
 }
 
 void hiddenset(void) {
   int i;
   if (stackpop(&i))
-    dict[i].flags |= F_HIDDEN;
+    entryaddr(i)->flags |= F_HIDDEN;
   next();
 }
 
 void hiddenclr(void) {
   int i;
   if (stackpop(&i))
-    dict[i].flags &= ~F_HIDDEN;
+    entryaddr(i)->flags &= ~F_HIDDEN;
   next();
 }
 
@@ -398,8 +417,8 @@ void interpret(void) {
   struct entry *de;
   if (gettoken(), !*wordbuf)
     exit(0);
-  if (de = find(dictlatest, wordbuf), de >= dict) {
-    int i = de - dict;
+  if (de = find(dictlatest, wordbuf), de) {
+    int i = memoff(de);
     if (compiling && !(de->flags & F_IMMEDIATE)) {
       addhere(i);
     } else {
@@ -479,12 +498,12 @@ void dumplatest(void) {
 }
 
 void defword(char *word, int flags, char *def) {
-  struct entry *de = dictlatest + 1;
-  assert(de < endof(dict));
+  struct entry *de = addentry();
   de->word = Strdup(word);
   de->flags = flags | F_HIDDEN;
   de->def = *nmem;
   de->func = docol;
+  de->next = memoff(dictlatest);
   while (*def) {
     char *p = wordbuf;
     while (space(*def))
@@ -553,13 +572,14 @@ void initdict(void) {
       {"aligned", aligned},
       {"dumplatest", dumplatest},
   };
-  assert(nelem(builtin) <= nelem(dict));
   for (i = 0; i < nelem(builtin); i++) {
-    dict[i].word = Strdup(builtin[i].word);
-    dict[i].func = builtin[i].func;
-    dict[i].flags = builtin[i].flags;
+    struct entry *de = addentry();
+    de->word = Strdup(builtin[i].word);
+    de->func = builtin[i].func;
+    de->flags = builtin[i].flags;
+    de->next = dictlatest ? memoff(dictlatest) : 0;
+    dictlatest = de;
   }
-  dictlatest = dict + i - 1;
   assert(snprintf(quitbuf, sizeof(quitbuf), "lit 0 rsp! interpret branch %d",
                   -2 * (int)sizeof(int)) < sizeof(quitbuf));
   defword("quit", 0, quitbuf);
@@ -571,8 +591,8 @@ int main(void) {
   intpp(nmem); /* nmem points to mem[0]. advance nmem so that it does not get
                   overwritten itself. */
   initdict();
-  vm.current = find(dictlatest, "quit") - dict;
+  vm.current = memoff(find(dictlatest, "quit"));
   while (1)
-    dict[vm.current].func();
+    entryaddr(vm.current)->func();
   return 0;
 }
