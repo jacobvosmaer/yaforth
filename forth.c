@@ -72,13 +72,13 @@ char wordbuf[256], *error;
 
 void next(void) { vm.current = *intaddr(intpp(&vm.next)); }
 
-struct entry *find(struct entry *start, char *word) {
+int find(struct entry *start, char *word) {
   struct entry *de;
   int n = strlen(word);
   for (de = start; memoff(de); de = entryaddr(de->next))
     if (!(de->flags & F_HIDDEN) && n == *intaddr(de->word) &&
         !memcmp(word, wordaddr(de->word), n))
-      return de;
+      return memoff(de);
   return 0;
 }
 
@@ -92,9 +92,9 @@ int asnum(char *token, int *out) {
 
 void compile(struct entry *start, char *word) {
   int x;
-  struct entry *de = find(start, word);
+  int de = find(start, word);
   if (de) {
-    addhere(memoff(de));
+    addhere(de);
   } else if (asnum(word, &x)) {
     addhere(x);
   } else {
@@ -416,18 +416,16 @@ void fetch(void) {
 }
 
 void interpret(void) {
-  int x, ch;
-  struct entry *de;
+  int x, ch, de;
   if (gettoken(), !*wordbuf)
     exit(0);
   if (de = find(dictlatest, wordbuf), de) {
-    int i = memoff(de);
-    if (compiling && !(de->flags & F_IMMEDIATE)) {
-      addhere(i);
+    if (compiling && !(entryaddr(de)->flags & F_IMMEDIATE)) {
+      addhere(de);
     } else {
-      /* Do not call next(), jump straight to i. Someone else will call next()
+      /* Do not call next(), jump straight to de. Someone else will call next()
        * eventually. */
-      vm.current = i;
+      vm.current = de;
       return;
     }
   } else if (asnum(wordbuf, &x)) {
@@ -594,7 +592,7 @@ int main(void) {
   intpp(nmem); /* nmem points to mem[0]. Advance nmem so that it does not get
                   overwritten itself. */
   initdict();
-  vm.current = memoff(find(dictlatest, "quit"));
+  vm.current = find(dictlatest, "quit");
   while (1)
     entryaddr(vm.current)->func();
   return 0;
