@@ -395,9 +395,10 @@ void comma(void) {
 
 void charcomma(void) {
   int x;
-  stackpop(&x);
-  assert(*nmem < memsize);
-  mem[(*nmem)++] = x;
+  if (stackpop(&x)) {
+    assert(*nmem < memsize);
+    mem[(*nmem)++] = x;
+  }
   next();
 }
 
