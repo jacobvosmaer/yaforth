@@ -233,6 +233,7 @@ defbinary(mul, x *y)
 defbinary(equal, x == y)
 defbinary(greaterthan, x > y)
 defbinary(lessthan, x < y)
+defbinary(mod, x % y)
 
 void divi(void) {
   int x, y;
@@ -573,6 +574,7 @@ void initdict(void) {
       {"c,", charcomma},
       {"aligned", aligned},
       {"dumplatest", dumplatest},
+      {"mod", mod},
   };
   for (i = 0; i < nelem(builtin); i++) {
     struct entry *de = addentry();
