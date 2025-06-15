@@ -1,9 +1,10 @@
+ set -e
+
 echo_n() {
   printf '%s' "$1"
 }
 
 test() {
-  set -e
   name=$1
   in=$2
   out=$3
@@ -13,7 +14,7 @@ test() {
     exit 0
   fi
   mkdir -p tmp
-  dir="t/tmp/${0##*/} $name"
+  dir="t/tmp/${0##*/}"
   mkdir -p "$dir"
   echo_n "$in" | ./forth > "$dir/actual"
   echo_n "$out" > "$dir/expected"
