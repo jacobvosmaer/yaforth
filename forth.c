@@ -12,6 +12,17 @@
   while (!(x))                                                                 \
   __builtin_trap()
 
+/* I stubbornly use gnu89 so I don't get a builtin alignof operator. I found the
+ * following clever trick on StackOverflow. Using & for a struct field with a
+ * pointer value of 0 does the same thing as offsetof. The "char c" ensures that
+ * the field we care about (d) is not at address 0. */
+#define alignof(x)                                                             \
+  ((size_t)&((struct {                                                         \
+     char c;                                                                   \
+     x d;                                                                      \
+   } *)0)                                                                      \
+       ->d)
+
 enum { F_IMMEDIATE = 1 << 0, F_HIDDEN = 1 << 1 };
 
 struct entry {
@@ -55,13 +66,13 @@ int *intaddr(int addr) {
 }
 
 int alignentry(int x) {
-  int mask = sizeof(struct entry) - 1;
+  int mask = alignof(struct entry) - 1;
   assert(x < INT_MAX - mask);
   return (x + mask) & ~mask;
 }
 
 struct entry *entryaddr(int addr) {
-  assert(!(addr & (sizeof(struct entry) - 1)));
+  assert(!(addr & (alignof(struct entry) - 1)));
   assert(addr >= 0 && addr < memsize);
   return (struct entry *)(mem + addr);
 }
