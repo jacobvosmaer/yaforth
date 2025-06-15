@@ -11,17 +11,14 @@
 #define assert(x)                                                              \
   while (!(x))                                                                 \
   __builtin_trap()
-
-/* I stubbornly use gnu89 so I don't get a builtin alignof operator. I found the
- * following clever trick on StackOverflow. Using & for a struct field with a
- * pointer value of 0 does the same thing as offsetof. The "char c" ensures that
- * the field we care about (d) is not at address 0. */
-#define alignof(x)                                                             \
-  ((size_t)&((struct {                                                         \
-     char c;                                                                   \
-     x d;                                                                      \
-   } *)0)                                                                      \
-       ->d)
+#define offsetof(t, f) (size_t)((char *)&((t *)0)->f - (char *)0)
+#define alignof(t)                                                             \
+  offsetof(                                                                    \
+      struct {                                                                 \
+        char c;                                                                \
+        t f;                                                                   \
+      },                                                                       \
+      f)
 
 enum { F_IMMEDIATE = 1 << 0, F_HIDDEN = 1 << 1 };
 
