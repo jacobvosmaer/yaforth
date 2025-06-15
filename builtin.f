@@ -39,3 +39,6 @@
   then
 ;
 : ( immediate begin key dup ')' <> swap -1 > and while repeat ;
+
+: 2dup ( x y --- x y x y ) over over ;
+: 2swap ( x y z w --- z w x y ) rot >r rot r> ;
