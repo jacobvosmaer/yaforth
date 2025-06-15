@@ -1,2 +1,5 @@
 #!/bin/sh
-lldb --one-line "settings set target.input-path $1" --one-line 'process launch' forth
+mkdir -p t/tmp
+in=t/tmp/debug.in
+$1 -d > $in
+lldb --one-line "settings set target.input-path $in" --one-line 'process launch' forth

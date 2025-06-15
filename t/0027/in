@@ -1,8 +1,0 @@
-." hello world!
-
-"
-."  x
-"
-: HELLO ." HELLO WORLD!" cr ;
-HELLO
-.s cr

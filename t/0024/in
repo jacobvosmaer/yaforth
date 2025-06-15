@@ -1,2 +1,0 @@
-: test begin dup 0 < if exit then dup . 1 - again ;
-3 test

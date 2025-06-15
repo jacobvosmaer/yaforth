@@ -2,8 +2,10 @@
 set -e
 cd t
 n=$(ls -d [0-9]* | awk '$1>max {max=$1} END { printf "%04d", max+1 }' )
-mkdir $n
-echo "$1" > $n/desc
-: > $n/in
-: > $n/out
-echo "created t/$n"
+cat <<EOF > $n.t
+#/bin/sh
+. ./t/test.sh
+test 'description' 'input' 'output'
+EOF
+chmod +x $n.t
+echo "Created t/$n.t"

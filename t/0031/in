@@ -1,2 +1,0 @@
-: test ( n --- ) drop ( also ignored ( no balancing ) ;
-1 2 test .s cr

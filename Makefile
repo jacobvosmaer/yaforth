@@ -4,6 +4,6 @@ forth.o: builtin.h
 builtin.h: builtin.f builtin
 	./builtin < builtin.f > $@
 test: all
-	t/run.t
+	t/all
 clean:
 	rm -rf forth forth.o forth.dSYM/ builtin builtin.h builtin.dSYM/

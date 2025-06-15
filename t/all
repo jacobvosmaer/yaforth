@@ -1,0 +1,9 @@
+#!/bin/sh
+fail=0
+out=t/tmp/all.out
+for exe in t/*.t
+do
+  $exe >$out || fail=1
+  grep -e '^ok ' -e '^not ok ' $out
+done
+exit $fail

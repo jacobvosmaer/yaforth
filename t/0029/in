@@ -1,2 +1,0 @@
-: printstate immediate state . cr ;
-] printstate [ printstate
