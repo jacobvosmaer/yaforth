@@ -1,6 +1,7 @@
 #!/bin/sh
 fail=0
 out=t/tmp/all.out
+mkdir -p t/tmp
 for exe in t/*.t
 do
   $exe >$out
