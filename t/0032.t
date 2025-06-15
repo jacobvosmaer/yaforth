@@ -1,6 +1,7 @@
 #!/bin/sh
 . ./t/test.sh
-test 'mod' '5 1 mod .
+test 'mod' '
+5 1 mod .
 5 2 mod .
 5 3 mod .
 5 4 mod .

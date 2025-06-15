@@ -1,6 +1,7 @@
 #!/bin/sh
 . ./t/test.sh
-test '."' '." hello world!
+test '."' '
+." hello world!
 
 "
 ."  x

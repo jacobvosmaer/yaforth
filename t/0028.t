@@ -1,6 +1,7 @@
 #!/bin/sh
 . ./t/test.sh
-test '\ comments' '." hello" \ ignored
+test '\ comments' '
+." hello" \ ignored
 32 emit
 ." world! \ not ignored
 "
