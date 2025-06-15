@@ -3,7 +3,11 @@ fail=0
 out=t/tmp/all.out
 for exe in t/*.t
 do
-  $exe >$out || fail=1
-  grep -e '^ok ' -e '^not ok ' $out
+  $exe >$out
+  if ! grep '^ok ' $out
+  then
+    fail=1
+    cat $out
+  fi
 done
 exit $fail
