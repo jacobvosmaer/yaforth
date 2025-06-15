@@ -6,4 +6,4 @@ builtin.h: builtin.f builtin
 test: all
 	t/all
 clean:
-	rm -rf forth forth.o forth.dSYM/ builtin builtin.h builtin.dSYM/
+	rm -rf forth forth.o forth.dSYM/ builtin builtin.h builtin.dSYM/ t/tmp
