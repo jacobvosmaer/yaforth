@@ -10,19 +10,25 @@
 : while immediate ' branch0 , here @ 0 , ;
 : repeat immediate ' branch , swap here @ - , dup here @ swap - swap ! ;
 
-: rot >r swap r> swap ;
-: over >r dup r> swap ;
-
 : not 0 = ;
 : <> = not ;
 : and not not swap not not * ;
 : or not swap not and not ;
 
-: align here @ aligned here ! ;
 : constant word create ' lit , , ' exit , ;
 10 constant '\n'
 34 constant '"'
 41 constant ')'
+
+: ( immediate begin key dup ')' <> swap -1 > and while repeat ;
+( now we can use parentheses for comments in between program text )
+
+: rot ( x y z -- y z x ) >r swap r> swap ;
+: over ( x y -- x y x ) >r dup r> swap ;
+: 2dup ( x y --- x y x y ) over over ;
+: 2swap ( x y z w --- z w x y ) rot >r rot r> ;
+
+: align here @ aligned here ! ;
 : cr '\n' emit ;
 : ." immediate
   state if
@@ -38,7 +44,4 @@
     begin key dup dup '"' <> swap -1 > and while emit repeat drop
   then
 ;
-: ( immediate begin key dup ')' <> swap -1 > and while repeat ;
 
-: 2dup ( x y --- x y x y ) over over ;
-: 2swap ( x y z w --- z w x y ) rot >r rot r> ;
